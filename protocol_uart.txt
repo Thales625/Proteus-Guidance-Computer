@@ -1,0 +1,71 @@
+-= Inter Proteus Protocol =-
+
+* PGC -> PIOC
+    (PGC)  Escreve byte na porta
+    (PGC)  Ativa flag "sending"
+    (PGC)  Pulso pino INT
+
+    (PIOC) Entra na ISR
+    (PIOC) Salva byte da porta
+    (PIOC) Pulso pino INT
+
+    (PGC)  Entra na ISR
+    (PGC)  Limpa flag "sending"
+    (PGC)  Pullup na porta
+
+
+* PIOC -> PGC
+    (PIOC) Escreve byte na porta
+    (PIOC) Ativa flag "sending"
+    (PIOC) Pulso pino INT
+
+    (PGC)  Entra na ISR
+    (PGC)  Pullup na porta
+    (PGC)  Salva byte da porta
+    (PGC)  Pulso pino INT
+
+    (PIOC) Entra na ISR
+    (PIOC) Limpa flag "sending"
+    (PIOC) Pullup na porta
+
+Binary representation: 0bVVVVNNNN
+Hex    representation: 0xVN
+
+4 bits of VERB
+4 bits of NOUN
+
+VERBs:
+    0 -> Request data
+        NOUNs:
+        0 -> position x (float32)
+        1 -> position y (float32)
+        2 -> velocity x (float32)
+        3 -> velocity y (float32)
+        4 -> angle (float32)
+        5 -> ang. velocity (float32)
+        6 -> av. acceleration (float32)
+        7 -> av. ang. acceleration (float32)
+        8 -> ut (float32)
+        9 -> gravity (float32)
+
+    1 -> Send data
+        NOUNs:
+        0 -> throttle (float32)
+        1 -> gimbal (float32)
+
+    2 -> Package
+        NOUNs:
+        0: Request a package
+            data:
+                position x (float32)
+                position y (float32)
+                velocity x (float32)
+                velocity y (float32)
+                angle (float32)
+                ang. velocity (float32)
+                av. acceleration (float32)
+
+        1: Send a package
+            data:
+                throttle (float32)
+                gimbal (float32)

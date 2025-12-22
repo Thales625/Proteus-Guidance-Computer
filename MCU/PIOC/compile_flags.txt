@@ -1,0 +1,18 @@
+-I/usr/share/sdcc/include
+-I/usr/share/sdcc/include/mcs51
+-Dbool=unsigned char
+-Dtrue=1
+-Dfalse=0
+-D__sfr=unsigned char
+-D__sbit=unsigned char
+-D__sfr16=unsigned short
+-D__bit=unsigned char
+-D__at(x)=
+-D__interrupt(x)=
+-D__critical=
+-D__code=
+-D__data=
+-D__near=
+-D__xdata=
+-D__pdata=
+-D__reentrant=

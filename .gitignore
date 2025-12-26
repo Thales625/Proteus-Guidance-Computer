@@ -4,6 +4,7 @@ MCU/*/output/
 # Proteus
 Proteus/*.PWI
 Proteus/*.SDF
+Proteus/*.DBK
 
 # Python
 Python/__pycache__/

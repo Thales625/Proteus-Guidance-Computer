@@ -129,28 +129,5 @@ def setup_func():
 
 def loop_func(ut):
     return
-    t_go = Tgo - ut
 
-    if True or t_go > 1.:
-        a0 = compute_a0(blue_ghost.position, target_position, blue_ghost.velocity, np.array([0, 0]), max(t_go, 3)) - celestial_body.gravity
-
-        throttle = blue_ghost.mass*np.linalg.norm(a0) / blue_ghost.available_thrust
-
-        blue_ghost.control.throttle = throttle
-
-        a0[1] = -a0[1]
-        blue_ghost.auto_pilot.target_direction = a0
-
-        print(f"tgo: {t_go:.2f}\nthrottle: {throttle:.2f}")
-        # print(f"tgo: {t_go:.2f}\nthrottle: {throttle:.2f}\ndist: {np.linalg.norm(ds):.2f}")
-        return
-
-    target_dir = -blue_ghost.velocity
-    target_dir[1] = -np.abs(target_dir[1]) - 2.
-    blue_ghost.auto_pilot.target_direction = target_dir
-
-    delta_speed = -2. - blue_ghost.velocity[1]
-    blue_ghost.control.throttle = (delta_speed*2. - celestial_body.gravity[1]) / (blue_ghost.available_thrust/blue_ghost.mass)
-    print(f"Vy: {blue_ghost.velocity[1]:.2f}")
-
-universe.Simulate(setup_func, loop_func, blue_ghost.position)
+universe.Simulate(setup_func, loop_func, blue_ghost.position, dt=0.01)

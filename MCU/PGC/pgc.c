@@ -29,8 +29,13 @@ void Timer0ISR(void) __interrupt (1) {
 }
 
 inline void compute_a0(void) {
-    float _a = -6.0f / (t_go * t_go);
-    float _b = -4.0f / t_go;
+    // float _a = -6.0f / (t_go * t_go);
+    // float _b = -4.0f / t_go;
+
+    // 4th Order
+    float _a = -12.0f / (t_go * t_go);
+    float _b = -6.0f / t_go;
+
     a0x = _a * pos_x + _b * vel_x;
     a0y = _a * pos_y + _b * vel_y - gravity_y;
 }
@@ -101,7 +106,7 @@ void main(void) {
         TR0 = 0;
     }
 
-    float t_go0 = 22.0f;
+    float t_go0 = 38.0f;
 
     while (1) {
         { // update ut
@@ -132,12 +137,10 @@ void main(void) {
                 delta_angle += 6.2831853f;
             }
 
-            // float delta_alpha = -2.0f * (sqrtf(fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle) - ang_vel);
-            // float delta_alpha = -2.0f * (0.9f * sqrtf(fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle) - ang_vel);
-            // float delta_alpha = -2.0f * (sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle) - ang_vel);
-            float delta_alpha = 2.0f * (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle));
+            float delta_alpha = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle));
 
-            gimbal = delta_alpha / (av_accel_ang * throttle);
+            // gimbal = delta_alpha / (av_accel_ang * throttle); // considering without RCS
+            gimbal = delta_alpha / av_accel_ang;
         } else {
             gimbal = 0.0f;
         }

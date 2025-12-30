@@ -90,24 +90,16 @@ class Universe:
         self.SetupShapes(ax)
         artists = self.GetArtists()
 
-        setup_func()
+        setup_func(ax)
 
-        time_text = ax.text(
-            0.01, 0.99, "", transform=ax.transAxes,
-            ha="left", va="top", fontweight="bold"
-        )
 
         def update(frame):
             ut = frame*dt
 
-            loop_func(ut)
-
             self.PhysicsLoop(dt, ut)
             self.RenderLoop()
 
-            time_text.set_text(f"ut = {ut:.2f} s")
-
-            return artists + [time_text]
+            return artists + loop_func(ut)
 
         ani = FuncAnimation(fig, update, interval=dt*1000, blit=True, cache_frame_data=False)
 

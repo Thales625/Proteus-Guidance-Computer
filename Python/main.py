@@ -8,7 +8,7 @@ from engine import Engine
 from rcs import RCSEngine
 from part import Part
 
-from utils import rotate_vec2
+from utils import rotate_vec2, text_bar
 
 celestial_body = CelestialBody(
     terrain_fun=Terrain.from_sine_wave(seed=42, n_harmonics=5),
@@ -23,8 +23,8 @@ blue_ghost = Vessel(
     position=np.array([90.0, 300.0]),
     velocity=np.array([-6.0, -10.0]),
     # velocity=np.array([0.0, 0.0]),
-    dry_mass=470.0,
-    fuel_mass=1100.0,
+    dry_mass=400.0,
+    fuel_mass=1500.0,
     celestial_body=celestial_body,
     size=np.array([2.0, 3.5]),
     color="orange"
@@ -36,6 +36,7 @@ blue_ghost.add_engine(0.,
         vessel_reference_frame=blue_ghost.reference_frame,
         size=np.array([.4, .8]),
         max_thrust=5000.,
+        isp=290,
         max_angle=np.radians(30.)
     )
 )
@@ -44,6 +45,7 @@ blue_ghost.add_engine(.55,
         vessel_reference_frame=blue_ghost.reference_frame,
         size=np.array([.4, .7]),
         max_thrust=1000.0,
+        isp=290,
         max_angle=np.radians(20.)
     )
 )
@@ -52,6 +54,7 @@ blue_ghost.add_engine(-.55,
         vessel_reference_frame=blue_ghost.reference_frame,
         size=np.array([.4, .7]),
         max_thrust=1000.0,
+        isp=290,
         max_angle=np.radians(20.)
     )
 )
@@ -62,7 +65,8 @@ blue_ghost.add_rcs_engine(-1.3,
         vessel_reference_frame=blue_ghost.reference_frame,
         rotation=np.radians(0.),
         size=np.array([.3, .4]),
-        max_thrust=2000.
+        max_thrust=2000.,
+        isp=260,
     ),
     left=False
 )
@@ -71,7 +75,8 @@ blue_ghost.add_rcs_engine(-1.3,
         vessel_reference_frame=blue_ghost.reference_frame,
         rotation=np.radians(0.),
         size=np.array([.3, .4]),
-        max_thrust=2000.
+        max_thrust=2000.,
+        isp=260,
     ),
     left=True
 )
@@ -124,10 +129,28 @@ Tgo = minimize_tgo(blue_ghost.position, np.array([0., 0.]), blue_ghost.velocity,
 
 print(f"COMPUTED TGO: {Tgo:.2f}")
 
-def setup_func():
-    return
+text_ut = None
+text_fuel = None
+
+def setup_func(ax):
+    global text_ut, text_fuel
+
+    text_ut = ax.text(
+        0.01, 0.99, "", transform=ax.transAxes,
+        ha="left", va="top", fontweight="bold"
+    )
+
+    text_fuel = ax.text(
+        0.01, 0.95, "", transform=ax.transAxes,
+        ha="left", va="top", fontweight="bold"
+    )
 
 def loop_func(ut):
-    return
+    global text_ut
+
+    text_ut.set_text(f"ut = {ut:.2f} s")
+    text_fuel.set_text(f"fuel = [{text_bar(blue_ghost.fuel_mass, blue_ghost.fuel_capacity)}] | {blue_ghost.fuel_mass:.2f} kg")
+
+    return [text_ut, text_fuel]
 
 universe.Simulate(setup_func, loop_func, blue_ghost.position, dt=0.01)

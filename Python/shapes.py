@@ -32,6 +32,12 @@ class Shape:
 
         self.artist.set_transform(t)
 
+    def enable(self):
+        self.artist.set_visible(True)
+
+    def disable(self):
+        self.artist.set_visible(False)
+
 
 class Polygon(Shape):
     def __init__(self, vertices, color="blue", edgecolor="black", zorder=1, reference_frame=None):

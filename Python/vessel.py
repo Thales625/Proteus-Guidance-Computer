@@ -15,8 +15,6 @@ def get_torque(force, position): return force[0] * position[1] - force[1] * posi
 
 class Vessel:
     def __init__(self, position, velocity, dry_mass, fuel_mass, celestial_body, moi=None, size=np.array([20., 80.]), color="gray", port="/dev/tnt1", baud_rate=9600) -> None:
-    # def __init__(self, position, velocity, dry_mass, fuel_mass, celestial_body, moi=None, size=np.array([20., 80.]), color="gray", port="/dev/tnt1", baud_rate=19200) -> None:
-    # def __init__(self, position, velocity, dry_mass, fuel_mass, celestial_body, moi=None, size=np.array([20., 80.]), color="gray", port="/dev/tnt1", baud_rate=57600) -> None:
         self.state = np.array([
             *position, # position
             *velocity, # velocity
@@ -31,6 +29,7 @@ class Vessel:
 
         self.dry_mass = dry_mass
         self.fuel_mass = fuel_mass
+        self.fuel_capacity = fuel_mass
 
         self.moment_of_inertia = moi or (.25 * self.mass * size.dot(size)) # moi approximation
 
@@ -284,18 +283,31 @@ class Vessel:
         self.force = np.array([0., 0.])
         self.torque = 0.
 
-        for engine in self.engines:
-            f = engine.max_thrust * self.control.throttle
-            self.force += f * engine.direction
-            self.torque += get_torque(f * vec2_from_angle(engine.angle), engine.position)
+        if self.fuel_mass > 0:
+            for engine in self.engines:
+                f = engine.max_thrust * self.control.throttle
+                self.force += f * engine.direction
+                self.torque += get_torque(f * vec2_from_angle(engine.angle), engine.position)
 
-        for rcs_engine in self.rcs_engines:
-            f = rcs_engine.max_thrust * rcs_engine.throttle(self.control.gimbal)
-            self.force -= f * rotate_vec2(rcs_engine.direction, self.angle)
-            self.torque += get_torque(f*rcs_engine.direction, rcs_engine.reference_frame.translation)
+                self.fuel_mass -= f/engine.exhaust_velocity
+                engine.has_fuel = True
+
+            for rcs_engine in self.rcs_engines:
+                f = rcs_engine.max_thrust * rcs_engine.throttle(self.control.gimbal)
+                self.force -= f * rotate_vec2(rcs_engine.direction, self.angle)
+                self.torque += get_torque(f*rcs_engine.direction, rcs_engine.reference_frame.translation)
+
+                self.fuel_mass -= f/engine.exhaust_velocity
+                rcs_engine.has_fuel = True
+
+            if self.fuel_mass < 0:
+                for engine in self.engines + self.rcs_engines: engine.has_fuel = False
+
+                self.fuel_mass = 0
+
+        print(f"Fuel mass: {self.fuel_mass:.2f}")
 
         # step ivp
-        # self.state += self.solver.step(self.state, ut, dt)
         with self.state_lock: new_state = self.state.copy()
         new_state += self.solver.step(new_state, ut, dt)
         with self.state_lock: self.state = new_state.copy()

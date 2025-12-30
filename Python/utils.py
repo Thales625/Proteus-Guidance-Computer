@@ -40,3 +40,8 @@ def normalized(vec):
     if norm == 0: norm = 1e-3
 
     return vec / norm
+
+def text_bar(value, max_value, width=10):
+    filled = int(max(0.0, min(1.0, 0.0 if max_value <= 0 else value / max_value)) * width)
+
+    return "█" * filled + "░" * (width - filled)

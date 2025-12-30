@@ -6,7 +6,7 @@ from shapes import Polygon
 from plume import Plume
 
 class RCSEngine:
-    def __init__(self, vessel_reference_frame, rotation, size:float, max_thrust, color="white") -> None:
+    def __init__(self, vessel_reference_frame, rotation, size:float, max_thrust, isp, color="white") -> None:
         self.direction = np.array([1., 0.])
 
         self.reference_frame = ReferenceFrame(rotation)
@@ -21,6 +21,10 @@ class RCSEngine:
             zorder=3
         )
         self.shape.reference_frame = vessel_reference_frame
+
+        self.has_fuel = True
+        self.isp = isp
+        self.exhaust_velocity = isp * 9.80665
         
         self.max_thrust = max_thrust
 
@@ -43,4 +47,9 @@ class RCSEngine:
     
     def draw(self):
         self.shape.draw(self.reference_frame())
-        self.plume.draw(self.reference_frame())
+
+        if self.has_fuel:
+            self.plume.shape.enable()
+            self.plume.draw(self.reference_frame())
+        else:
+            self.plume.shape.disable()

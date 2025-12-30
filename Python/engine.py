@@ -6,7 +6,7 @@ from shapes import Polygon
 from plume import Plume
 
 class Engine:
-    def __init__(self, vessel_reference_frame, size, max_thrust, max_angle=np.pi/4, color="black") -> None:
+    def __init__(self, vessel_reference_frame, size, max_thrust, isp, max_angle=np.pi/4, color="black") -> None:
         self.position = np.array([0.0, 0.0]) # vessel reference frame
         self.angle = 0.0
         self.direction = np.array([0.0, 0.0])
@@ -23,6 +23,10 @@ class Engine:
             zorder=3,
             reference_frame=vessel_reference_frame
         )
+
+        self.has_fuel = True
+        self.isp = isp
+        self.exhaust_velocity = isp * 9.80665
 
         self.max_thrust = max_thrust
         self.max_angle = max_angle
@@ -43,4 +47,9 @@ class Engine:
     
     def draw(self):
         self.shape.draw(self.reference_frame())
-        self.plume.draw(self.reference_frame())
+
+        if self.has_fuel:
+            self.plume.shape.enable()
+            self.plume.draw(self.reference_frame())
+        else:
+            self.plume.shape.disable()

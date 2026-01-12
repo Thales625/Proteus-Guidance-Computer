@@ -2,6 +2,8 @@ import matplotlib.patches as mpl_patches
 from matplotlib.lines import Line2D as _Line2D
 from matplotlib.artist import Artist as _Artist
 
+import numpy as np
+
 class Shape:
     def __init__(self, artist: _Artist, reference_frame=None):
         self.artist = artist
@@ -41,6 +43,7 @@ class Shape:
 
 class Polygon(Shape):
     def __init__(self, vertices, color="blue", edgecolor="black", zorder=1, reference_frame=None):
+        self.local_vertices = np.array(vertices)
         super().__init__(mpl_patches.Polygon(vertices, closed=True, facecolor=color, edgecolor=edgecolor, zorder=zorder), reference_frame)
 
 class Line(Shape):

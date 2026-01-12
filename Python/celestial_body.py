@@ -7,15 +7,14 @@ class CelestialBody:
         self.gravity = np.array([0., -gravity])
         self.offset = offset
     
-    def get_points(self):
-        return self.terrain.x, self.terrain.y
+    def get_point(self, x):
+        # x -= self.offset[0]
+        # return x, self.terrain(x)-self.offset[1]
+        return x, self.terrain(x)
 
     def curve(self):
         x_arr = np.arange(self.terrain.min_x, self.terrain.max_x, 1.)
-        return x_arr-self.offset[0], self.terrain(x_arr)-self.offset[1]
-
-    def get_spot(self, x):
-        return np.array([x, self.terrain(x)])
+        return self.get_point(x_arr)
 
     def get_flat_spot(self, x_min, x_max):
         def slope_cost(x):

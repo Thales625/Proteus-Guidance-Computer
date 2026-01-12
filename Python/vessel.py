@@ -36,6 +36,8 @@ class Vessel:
         self.available_thrust = 0.
         self.available_torque = 0.
 
+        self.body = celestial_body
+
         # Serial communication
         self.serial_port = Serial(port, baud_rate)
 
@@ -163,7 +165,7 @@ class Vessel:
             accel_ang = self.torque / self.moment_of_inertia
             
             # linear
-            accel_x, accel_y = self.force / self.mass + celestial_body.gravity
+            accel_x, accel_y = self.force / self.mass + self.body.gravity
 
             # DEBUG freeze pos
             '''
@@ -187,6 +189,26 @@ class Vessel:
             ])
 
         self.solver = RK4(dSdt)
+
+    def check_ground_collision(self):
+        # with self.state_lock:
+            # vel = self.velocity
+
+        vertices = list(self.shape.local_vertices)
+        # for e in self.engines: vertices += list(e.shape.local_vertices)
+        # for e in self.rcs_engines: vertices += list(e.shape.local_vertices)
+        # for p in self.parts: vertices += list(p.shape.local_vertices)
+
+        for local_vertex in vertices:
+            vertex = self.reference_frame.transform_position_to_global(local_vertex)
+            print(vertex, end=" ")
+
+            # if vertex[1] < self.body.get_terrain(vertex[0]):
+            if vertex[1] < self.body.get_point(vertex[0])[1]:
+                return True, vertex
+        print()
+                
+        return False, None
 
     @property
     def position(self):
@@ -221,6 +243,10 @@ class Vessel:
     def angular_velocity(self):
         with self.state_lock:
             return self.state[5]
+    @angular_velocity.setter
+    def angular_velocity(self, value):
+        with self.state_lock:
+            self.state[5] = value
 
     @property
     def mass(self):
@@ -315,6 +341,11 @@ class Vessel:
         # update reference frame
         self.reference_frame.rotation = self.angle
         self.reference_frame.translation = self.position
+
+        # check ground collision
+        hit, info = self.check_ground_collision()
+
+        if hit: self.velocity = np.array([0.9*self.velocity[0], -0.9*self.velocity[1]])
 
 		# clamp
         self.angle = (self.angle + np.pi) % (2*np.pi) - np.pi

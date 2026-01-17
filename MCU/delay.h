@@ -16,11 +16,9 @@ void Delay_polling(unsigned int ms) {
     }
 }
 
-/*
 void Delay_5us(void) {
     unsigned char i;
-    for(i = 0; i < 5; i++);
+    for(i=0; i<5; i++);
 }
-*/
 
 #endif

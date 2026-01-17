@@ -1,32 +1,4 @@
--= Inter Proteus Protocol =-
-
-* PGC -> PIOC
-    (PGC)  Escreve byte na porta
-    (PGC)  Ativa flag "sending"
-    (PGC)  Pulso pino INT
-
-    (PIOC) Entra na ISR
-    (PIOC) Salva byte da porta
-    (PIOC) Pulso pino INT
-
-    (PGC)  Entra na ISR
-    (PGC)  Limpa flag "sending"
-    (PGC)  Pullup na porta
-
-
-* PIOC -> PGC
-    (PIOC) Escreve byte na porta
-    (PIOC) Ativa flag "sending"
-    (PIOC) Pulso pino INT
-
-    (PGC)  Entra na ISR
-    (PGC)  Pullup na porta
-    (PGC)  Salva byte da porta
-    (PGC)  Pulso pino INT
-
-    (PIOC) Entra na ISR
-    (PIOC) Limpa flag "sending"
-    (PIOC) Pullup na porta
+-= Proteus Python Protocol =-
 
 Binary representation: 0bVVVVNNNN
 Hex    representation: 0xVN

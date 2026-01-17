@@ -20,9 +20,9 @@ universe = Universe(celestial_body)
 
 # vessel
 blue_ghost = Vessel(
-    position=np.array([90.0, 30.0]),
-    # position=np.array([90.0, 300.0]),
+    position=np.array([90.0, 300.0]),
     velocity=np.array([-6.0, -10.0]),
+    # position=np.array([90.0, 30.0]),
     # velocity=np.array([0.0, 0.0]),
     dry_mass=400.0,
     fuel_mass=1500.0,

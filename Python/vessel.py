@@ -109,7 +109,7 @@ class Vessel:
                         if verb == 2: # MCU request/send PACKAGE
                             if noun == 0: # request
                                 with self.control_lock:
-                                    for data_to_send in list(self.state) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia]:
+                                    for data_to_send in [self.ut] + list(self.state) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia]:
                                         self.serial_port.write(struct.pack('<f', data_to_send))
                                 continue
 
@@ -120,7 +120,7 @@ class Vessel:
                                         if len(raw_bytes) == 4:
                                             float_value = struct.unpack('<f', raw_bytes)[0]
                                             self.control[i] = float_value
-                                            print(f"Control[{i}] = {float_value:.4f}")
+                                            # print(f"Control[{i}] = {float_value:.4f}")
                                         else:
                                             print("ERROR: Insuficient byte for float operation")
                                 continue
@@ -201,12 +201,12 @@ class Vessel:
 
         for local_vertex in vertices:
             vertex = self.reference_frame.transform_position_to_global(local_vertex)
-            print(vertex, end=" ")
+            # print(vertex, end=" ")
 
             # if vertex[1] < self.body.get_terrain(vertex[0]):
             if vertex[1] < self.body.get_point(vertex[0])[1]:
                 return True, vertex
-        print()
+        # print()
                 
         return False, None
 
@@ -331,7 +331,7 @@ class Vessel:
 
                 self.fuel_mass = 0
 
-        print(f"Fuel mass: {self.fuel_mass:.2f}")
+        # print(f"Fuel mass: {self.fuel_mass:.2f}")
 
         # step ivp
         with self.state_lock: new_state = self.state.copy()

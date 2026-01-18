@@ -13,14 +13,14 @@
 	.globl _Serial_ReadByte
 	.globl _Serial_SendFloat
 	.globl _Serial_SendByte
-	.globl _MAX7219_WriteByte
-	.globl _MAX7219_WriteFloat
+	.globl _Delay_5us
+	.globl _Delay_polling
+	.globl _Display_WriteDigit
+	.globl _Display_WriteFloat
 	.globl _MAX7219_Write
+	.globl _MAX7219_Select
 	.globl _MAX7219_SPI_Write_Byte
 	.globl _Keyboard_Read
-	.globl _fabsf
-	.globl _sqrtf
-	.globl _atan2f
 	.globl _CY
 	.globl _AC
 	.globl _F0
@@ -144,6 +144,16 @@
 	.globl _DPL
 	.globl _SP
 	.globl _P0
+	.globl _gravity_y
+	.globl _ut
+	.globl _av_accel_ang
+	.globl _av_accel
+	.globl _ang_vel
+	.globl _angle
+	.globl _vel_y
+	.globl _vel_x
+	.globl _pos_y
+	.globl _pos_x
 	.globl _dsky_key_pressed
 	.globl _dsky_state
 	.globl _dsky_buffer
@@ -155,18 +165,8 @@
 	.globl _PROG
 	.globl _gimbal
 	.globl _throttle
-	.globl _gravity_y
-	.globl _ut
-	.globl _av_accel_ang
-	.globl _av_accel
-	.globl _ang_vel
-	.globl _angle
-	.globl _vel_y
-	.globl _vel_x
-	.globl _pos_y
-	.globl _pos_x
-	.globl _MAX7219_WriteByte_PARM_2
-	.globl _MAX7219_WriteFloat_PARM_2
+	.globl _Display_WriteDigit_PARM_2
+	.globl _Display_WriteFloat_PARM_2
 	.globl _MAX7219_Write_PARM_2
 ;--------------------------------------------------------
 ; special function registers
@@ -312,32 +312,12 @@ _CY	=	0x00d7
 	.area DSEG    (DATA)
 _MAX7219_Write_PARM_2:
 	.ds 1
-_MAX7219_WriteFloat_PARM_2:
+_Display_WriteFloat_PARM_2:
 	.ds 4
-_MAX7219_WriteFloat_number_10000_48:
+_Display_WriteFloat_number_10000_50:
 	.ds 4
-_MAX7219_WriteByte_PARM_2:
+_Display_WriteDigit_PARM_2:
 	.ds 1
-_pos_x::
-	.ds 4
-_pos_y::
-	.ds 4
-_vel_x::
-	.ds 4
-_vel_y::
-	.ds 4
-_angle::
-	.ds 4
-_ang_vel::
-	.ds 4
-_av_accel::
-	.ds 4
-_av_accel_ang::
-	.ds 4
-_ut::
-	.ds 4
-_gravity_y::
-	.ds 4
 _throttle::
 	.ds 4
 _gimbal::
@@ -360,13 +340,12 @@ _dsky_state::
 	.ds 1
 _dsky_key_pressed::
 	.ds 1
-_main__a_50000_119:
-	.ds 4
-_main__b_50000_119:
-	.ds 4
 ;--------------------------------------------------------
 ; overlayable items in internal ram
 ;--------------------------------------------------------
+	.area	OSEG    (OVR,DATA)
+	.area	OSEG    (OVR,DATA)
+	.area	OSEG    (OVR,DATA)
 	.area	OSEG    (OVR,DATA)
 	.area	OSEG    (OVR,DATA)
 	.area	OSEG    (OVR,DATA)
@@ -402,6 +381,26 @@ __start__stack:
 ; uninitialized external ram data
 ;--------------------------------------------------------
 	.area XSEG    (XDATA)
+_pos_x::
+	.ds 4
+_pos_y::
+	.ds 4
+_vel_x::
+	.ds 4
+_vel_y::
+	.ds 4
+_angle::
+	.ds 4
+_ang_vel::
+	.ds 4
+_av_accel::
+	.ds 4
+_av_accel_ang::
+	.ds 4
+_ut::
+	.ds 4
+_gravity_y::
+	.ds 4
 ;--------------------------------------------------------
 ; absolute external ram data
 ;--------------------------------------------------------
@@ -556,9 +555,9 @@ _Keyboard_Read:
 ;	keyboard.h:26: KEYBOARD_PORT = 0xFF & ~y;
 	mov	a,r7
 	cpl	a
-	mov	_P2,a
+	mov	_P1,a
 ;	keyboard.h:28: x = ~((KEYBOARD_PORT & 0xF0) >> 4) & 0x0F;
-	mov	r4,_P2
+	mov	r4,_P1
 	anl	ar4,#0xf0
 	clr	a
 	xch	a,r4
@@ -669,9 +668,9 @@ _Keyboard_Read:
 ;	keyboard.h:49: KEYBOARD_PORT = 0xFF & ~y;
 	mov	a,r7
 	cpl	a
-	mov	_P2,a
+	mov	_P1,a
 ;	keyboard.h:51: x = ~((KEYBOARD_PORT & 0xF0) >> 4) & 0x0F;
-	mov	r6,_P2
+	mov	r6,_P1
 	anl	ar6,#0xf0
 	clr	a
 	xch	a,r6
@@ -719,41 +718,57 @@ _Keyboard_Read:
 ;------------------------------------------------------------
 ;Allocation info for local variables in function 'MAX7219_SPI_Write_Byte'
 ;------------------------------------------------------------
-;data          Allocated to registers r7 
-;i             Allocated to registers r6 
+;data          Allocated to registers 
+;i             Allocated to registers r7 
 ;------------------------------------------------------------
-;	display.h:13: void MAX7219_SPI_Write_Byte(byte_t data) {
+;	display.h:17: void MAX7219_SPI_Write_Byte(byte_t data) {
 ;	-----------------------------------------
 ;	 function MAX7219_SPI_Write_Byte
 ;	-----------------------------------------
 _MAX7219_SPI_Write_Byte:
-	mov	r7, dpl
-;	display.h:16: for(i=0; i<8; i++) {
-	mov	r6,#0x00
+;	display.h:22: for(i=0; i<8; i++) {
+	mov	r7,#0x00
 00102$:
-;	display.h:17: MAX7219_CLK_PIN = 0;
+;	display.h:23: MAX7219_CLK_PIN = 0;
 ;	assignBit
-	clr	_P0_1
-;	display.h:18: MAX7219_DIN_PIN = (data & 0x80);
-	mov	a,r7
-	rl	a
-	anl	a,#0x01
+	clr	_P3_5
+;	display.h:31: __endasm;
+	mov	a, dpl
+	rlc	a
+;	display.h:32: ASM_MOV_C_TO_PIN(MAX7219_DIN_PIN);
+	mov	_P3_3, c 
+;	display.h:35: __endasm;
+	mov	dpl, a
+;	display.h:37: MAX7219_CLK_PIN = 1;
 ;	assignBit
-	add	a,#0xff
-	mov	_P0_0,c
-;	display.h:19: data = data << 1;
-	mov	a,r7
-	add	a,r7
-	mov	r7,a
-;	display.h:20: MAX7219_CLK_PIN = 1;
-;	assignBit
-	setb	_P0_1
-;	display.h:16: for(i=0; i<8; i++) {
-	inc	r6
-	cjne	r6,#0x08,00113$
+	setb	_P3_5
+;	display.h:22: for(i=0; i<8; i++) {
+	inc	r7
+	cjne	r7,#0x08,00113$
 00113$:
 	jc	00102$
-;	display.h:22: }
+;	display.h:39: }
+	ret
+;------------------------------------------------------------
+;Allocation info for local variables in function 'MAX7219_Select'
+;------------------------------------------------------------
+;index         Allocated to registers 
+;------------------------------------------------------------
+;	display.h:41: void MAX7219_Select(byte_t index) {
+;	-----------------------------------------
+;	 function MAX7219_Select
+;	-----------------------------------------
+_MAX7219_Select:
+;	display.h:50: __endasm;
+	mov	a, dpl
+	rrc	a
+;	display.h:51: ASM_MOV_C_TO_PIN(MAX7219_CS0_PIN);
+	mov	_P2_5, c 
+;	display.h:55: __endasm;
+	rrc	a
+;	display.h:56: ASM_MOV_C_TO_PIN(MAX7219_CS1_PIN);
+	mov	_P2_6, c 
+;	display.h:57: }
 	ret
 ;------------------------------------------------------------
 ;Allocation info for local variables in function 'MAX7219_Write'
@@ -761,49 +776,47 @@ _MAX7219_SPI_Write_Byte:
 ;value         Allocated with name '_MAX7219_Write_PARM_2'
 ;reg           Allocated to registers r7 
 ;------------------------------------------------------------
-;	display.h:29: void MAX7219_Write(byte_t reg, byte_t value) {
+;	display.h:59: void MAX7219_Write(byte_t reg, byte_t value) {
 ;	-----------------------------------------
 ;	 function MAX7219_Write
 ;	-----------------------------------------
 _MAX7219_Write:
 	mov	r7, dpl
-;	display.h:30: MAX7219_CS_PIN = 1; // enable CS
+;	display.h:60: MAX7219_CS_PIN = 1; // enable CS
 ;	assignBit
-	setb	_P0_4
-;	display.h:31: MAX7219_SPI_Write_Byte(reg);   // send address
+	setb	_P2_7
+;	display.h:61: MAX7219_SPI_Write_Byte(reg);   // send address
 	mov	dpl, r7
 	lcall	_MAX7219_SPI_Write_Byte
-;	display.h:32: MAX7219_SPI_Write_Byte(value); // send value
+;	display.h:62: MAX7219_SPI_Write_Byte(value); // send value
 	mov	dpl, _MAX7219_Write_PARM_2
 	lcall	_MAX7219_SPI_Write_Byte
-;	display.h:33: MAX7219_CS_PIN = 0; // disable CS
+;	display.h:63: MAX7219_CS_PIN = 0; // disable CS
 ;	assignBit
-	clr	_P0_4
-;	display.h:34: }
+	clr	_P2_7
+;	display.h:64: }
 	ret
 ;------------------------------------------------------------
-;Allocation info for local variables in function 'MAX7219_WriteFloat'
+;Allocation info for local variables in function 'Display_WriteFloat'
 ;------------------------------------------------------------
-;value         Allocated with name '_MAX7219_WriteFloat_PARM_2'
+;value         Allocated with name '_Display_WriteFloat_PARM_2'
 ;index         Allocated to registers r7 
 ;digit         Allocated to registers r0 r1 
-;number        Allocated with name '_MAX7219_WriteFloat_number_10000_48'
-;__200000007   Allocated to registers 
-;index         Allocated to registers 
+;number        Allocated with name '_Display_WriteFloat_number_10000_50'
 ;i             Allocated to registers r7 
 ;------------------------------------------------------------
-;	display.h:36: void MAX7219_WriteFloat(byte_t index, float value) {
+;	display.h:74: void Display_WriteFloat(byte_t index, float value) {
 ;	-----------------------------------------
-;	 function MAX7219_WriteFloat
+;	 function Display_WriteFloat
 ;	-----------------------------------------
-_MAX7219_WriteFloat:
+_Display_WriteFloat:
 	mov	r7, dpl
-;	display.h:38: long number = (long) (value * 100);
+;	display.h:76: long number = (long) (value * 100);
 	push	ar7
-	push	_MAX7219_WriteFloat_PARM_2
-	push	(_MAX7219_WriteFloat_PARM_2 + 1)
-	push	(_MAX7219_WriteFloat_PARM_2 + 2)
-	push	(_MAX7219_WriteFloat_PARM_2 + 3)
+	push	_Display_WriteFloat_PARM_2
+	push	(_Display_WriteFloat_PARM_2 + 1)
+	push	(_Display_WriteFloat_PARM_2 + 2)
+	push	(_Display_WriteFloat_PARM_2 + 3)
 	mov	dptr,#0x0000
 	mov	b, #0xc8
 	mov	a, #0x42
@@ -820,120 +833,92 @@ _MAX7219_WriteFloat:
 	mov	b, r5
 	mov	a, r6
 	lcall	___fs2slong
-	mov	_MAX7219_WriteFloat_number_10000_48,dpl
-	mov	(_MAX7219_WriteFloat_number_10000_48 + 1),dph
-	mov	(_MAX7219_WriteFloat_number_10000_48 + 2),b
-	mov	(_MAX7219_WriteFloat_number_10000_48 + 3),a
+	mov	_Display_WriteFloat_number_10000_50,dpl
+	mov	(_Display_WriteFloat_number_10000_50 + 1),dph
+	mov	(_Display_WriteFloat_number_10000_50 + 2),b
+	mov	(_Display_WriteFloat_number_10000_50 + 3),a
 	pop	ar7
-;	display.h:25: MAX7219_CS0_PIN = index & 0b01;
-	mov	a,r7
-	anl	a,#0x01
-;	assignBit
-	add	a,#0xff
-	mov	_P0_2,c
-;	display.h:26: MAX7219_CS1_PIN = index & 0b10;
-	mov	a,r7
-	rr	a
-	anl	a,#0x01
-;	assignBit
-	add	a,#0xff
-	mov	_P0_3,c
-;	display.h:42: for(byte_t i=6; i>0; i--) {
+;	display.h:78: MAX7219_Select(index);
+	mov	dpl, r7
+	lcall	_MAX7219_Select
+;	display.h:80: for(byte_t i=6; i>0; i--) {
 	mov	r7,#0x06
-00104$:
+00103$:
 	mov	a,r7
-	jz	00106$
-;	display.h:43: digit = number % 10;
+	jz	00105$
+;	display.h:81: digit = number % 10;
 	mov	__modslong_PARM_2,#0x0a
 	clr	a
 	mov	(__modslong_PARM_2 + 1),a
 	mov	(__modslong_PARM_2 + 2),a
 	mov	(__modslong_PARM_2 + 3),a
-	mov	dpl, _MAX7219_WriteFloat_number_10000_48
-	mov	dph, (_MAX7219_WriteFloat_number_10000_48 + 1)
-	mov	b, (_MAX7219_WriteFloat_number_10000_48 + 2)
-	mov	a, (_MAX7219_WriteFloat_number_10000_48 + 3)
+	mov	dpl, _Display_WriteFloat_number_10000_50
+	mov	dph, (_Display_WriteFloat_number_10000_50 + 1)
+	mov	b, (_Display_WriteFloat_number_10000_50 + 2)
+	mov	a, (_Display_WriteFloat_number_10000_50 + 3)
 	push	ar7
 	lcall	__modslong
 	mov	r0, dpl
 	mov	r1, dph
-;	display.h:44: number = number / 10;
+	pop	ar7
+;	display.h:82: number = number / 10;
 	mov	__divslong_PARM_2,#0x0a
 	clr	a
 	mov	(__divslong_PARM_2 + 1),a
 	mov	(__divslong_PARM_2 + 2),a
 	mov	(__divslong_PARM_2 + 3),a
-;	display.h:46: MAX7219_Write(i, i==4 ? digit | 0x80 : digit);
-	mov	dpl, _MAX7219_WriteFloat_number_10000_48
-	mov	dph, (_MAX7219_WriteFloat_number_10000_48 + 1)
-	mov	b, (_MAX7219_WriteFloat_number_10000_48 + 2)
-	mov	a, (_MAX7219_WriteFloat_number_10000_48 + 3)
+;	display.h:84: MAX7219_Write(i, i==4 ? digit | 0x80 : digit);
+	mov	dpl, _Display_WriteFloat_number_10000_50
+	mov	dph, (_Display_WriteFloat_number_10000_50 + 1)
+	mov	b, (_Display_WriteFloat_number_10000_50 + 2)
+	mov	a, (_Display_WriteFloat_number_10000_50 + 3)
+	push	ar7
 	push	ar1
 	push	ar0
 	lcall	__divslong
-	mov	_MAX7219_WriteFloat_number_10000_48,dpl
-	mov	(_MAX7219_WriteFloat_number_10000_48 + 1),dph
-	mov	(_MAX7219_WriteFloat_number_10000_48 + 2),b
-	mov	(_MAX7219_WriteFloat_number_10000_48 + 3),a
+	mov	_Display_WriteFloat_number_10000_50,dpl
+	mov	(_Display_WriteFloat_number_10000_50 + 1),dph
+	mov	(_Display_WriteFloat_number_10000_50 + 2),b
+	mov	(_Display_WriteFloat_number_10000_50 + 3),a
 	pop	ar0
 	pop	ar1
 	pop	ar7
-	cjne	r7,#0x04,00110$
+	cjne	r7,#0x04,00109$
 	mov	a,#0x80
 	orl	a,r0
 	mov	r5,a
 	mov	ar6,r1
-	sjmp	00111$
-00110$:
+	sjmp	00110$
+00109$:
 	mov	ar5,r0
 	mov	ar6,r1
-00111$:
+00110$:
 	mov	_MAX7219_Write_PARM_2,r5
 	mov	dpl, r7
 	push	ar7
 	lcall	_MAX7219_Write
 	pop	ar7
-;	display.h:42: for(byte_t i=6; i>0; i--) {
+;	display.h:80: for(byte_t i=6; i>0; i--) {
 	dec	r7
-	sjmp	00104$
-00106$:
-;	display.h:48: }
+	sjmp	00103$
+00105$:
+;	display.h:86: }
 	ret
 ;------------------------------------------------------------
-;Allocation info for local variables in function 'MAX7219_WriteByte'
+;Allocation info for local variables in function 'Display_WriteDigit'
 ;------------------------------------------------------------
-;value         Allocated with name '_MAX7219_WriteByte_PARM_2'
+;value         Allocated with name '_Display_WriteDigit_PARM_2'
 ;index         Allocated to registers r7 
-;__200000009   Allocated to registers 
-;index         Allocated to registers 
 ;------------------------------------------------------------
-;	display.h:50: void MAX7219_WriteByte(byte_t index, byte_t value) {
+;	display.h:88: void Display_WriteDigit(byte_t index, byte_t value) {
 ;	-----------------------------------------
-;	 function MAX7219_WriteByte
+;	 function Display_WriteDigit
 ;	-----------------------------------------
-_MAX7219_WriteByte:
-;	display.h:25: MAX7219_CS0_PIN = index & 0b01;
-	mov	a,dpl
-	mov	r7,a
-	anl	a,#0x01
-;	assignBit
-	add	a,#0xff
-	mov	_P0_2,c
-;	display.h:26: MAX7219_CS1_PIN = index & 0b10;
-	mov	a,r7
-	rr	a
-	anl	a,#0x01
-;	assignBit
-	add	a,#0xff
-	mov	_P0_3,c
-;	display.h:53: if (value > 99) value = 99;
-	mov	a,_MAX7219_WriteByte_PARM_2
-	add	a,#0xff - 0x63
-	jnc	00102$
-	mov	_MAX7219_WriteByte_PARM_2,#0x63
-00102$:
-;	display.h:55: MAX7219_Write(7, value/10);
-	mov	r7,_MAX7219_WriteByte_PARM_2
+_Display_WriteDigit:
+;	display.h:89: MAX7219_Select(index);
+	lcall	_MAX7219_Select
+;	display.h:93: MAX7219_Write(7, value/10);
+	mov	r7,_Display_WriteDigit_PARM_2
 	mov	ar6,r7
 	mov	b,#0x0a
 	mov	a,r6
@@ -943,15 +928,77 @@ _MAX7219_WriteByte:
 	push	ar7
 	lcall	_MAX7219_Write
 	pop	ar7
-;	display.h:56: MAX7219_Write(8, value%10);
+;	display.h:94: MAX7219_Write(8, value%10);
 	mov	b,#0x0a
 	mov	a,r7
 	div	ab
 	mov	r7,b
 	mov	_MAX7219_Write_PARM_2,r7
 	mov	dpl, #0x08
-;	display.h:57: }
+;	display.h:95: }
 	ljmp	_MAX7219_Write
+;------------------------------------------------------------
+;Allocation info for local variables in function 'Delay_polling'
+;------------------------------------------------------------
+;ms            Allocated to registers r6 r7 
+;------------------------------------------------------------
+;	delay.h:6: void Delay_polling(unsigned int ms) {
+;	-----------------------------------------
+;	 function Delay_polling
+;	-----------------------------------------
+_Delay_polling:
+	mov	r6, dpl
+	mov	r7, dph
+;	delay.h:7: TMOD |= 0x01;
+	orl	_TMOD,#0x01
+;	delay.h:9: while(ms--) {
+00104$:
+	mov	ar4,r6
+	mov	ar5,r7
+	dec	r6
+	cjne	r6,#0xff,00134$
+	dec	r7
+00134$:
+	mov	a,r4
+	orl	a,r5
+	jz	00107$
+;	delay.h:10: TH0 = 0xFC;
+	mov	_TH0,#0xfc
+;	delay.h:11: TL0 = 0x17;
+	mov	_TL0,#0x17
+;	delay.h:12: TR0 = 1;
+;	assignBit
+	setb	_TR0
+;	delay.h:13: while(!TF0);
+00101$:
+;	delay.h:14: TF0 = 0;
+;	assignBit
+	jbc	_TF0,00136$
+	sjmp	00101$
+00136$:
+;	delay.h:15: TR0 = 0;
+;	assignBit
+	clr	_TR0
+	sjmp	00104$
+00107$:
+;	delay.h:17: }
+	ret
+;------------------------------------------------------------
+;Allocation info for local variables in function 'Delay_5us'
+;------------------------------------------------------------
+;i             Allocated to registers r7 
+;------------------------------------------------------------
+;	delay.h:19: void Delay_5us(void) {
+;	-----------------------------------------
+;	 function Delay_5us
+;	-----------------------------------------
+_Delay_5us:
+;	delay.h:21: for(i=0; i<5; i++);
+	mov	r7,#0x05
+00104$:
+	djnz	r7,00104$
+;	delay.h:22: }
+	ret
 ;------------------------------------------------------------
 ;Allocation info for local variables in function 'Serial_SendByte'
 ;------------------------------------------------------------
@@ -1070,22 +1117,23 @@ _Serial_ReadFloat:
 ;------------------------------------------------------------
 ;key           Allocated to registers r7 
 ;t_go0         Allocated to registers 
-;__300000011   Allocated to registers 
+;counter       Allocated to registers 
+;__300000007   Allocated to registers 
 ;th1           Allocated to registers 
-;__300000013   Allocated to registers 
+;__300000009   Allocated to registers 
 ;n_SCON        Allocated to registers 
-;__500000015   Allocated to registers 
-;index         Allocated to registers 
-;_a            Allocated with name '_main__a_50000_119'
-;_b            Allocated with name '_main__b_50000_119'
-;__400000024   Allocated to registers r4 r5 r6 r7 
-;__400000020   Allocated to registers r4 r5 r6 r7 
-;delta_angle   Allocated to registers r4 r5 r6 r7 
-;__400000021   Allocated to registers r0 r1 r2 r3 
-;__400000022   Allocated to registers r4 r5 r6 r7 
+;a             Allocated to registers r4 r5 r6 r7 
+;b             Allocated to registers r0 r1 r2 r3 
+;_a            Allocated to registers 
+;_b            Allocated to registers 
+;__400010018   Allocated to registers 
+;__400010014   Allocated to registers 
+;delta_angle   Allocated to registers 
+;__400010015   Allocated to registers 
+;__400010016   Allocated to registers 
 ;vx            Allocated to registers 
 ;vy            Allocated to registers 
-;__400000025   Allocated to registers 
+;__400010019   Allocated to registers 
 ;value         Allocated to registers 
 ;------------------------------------------------------------
 ;	pgc.c:79: int main(void) {    
@@ -1104,878 +1152,303 @@ _main:
 	setb	_TR1
 ;	serial.h:9: SCON = n_SCON;
 	mov	_SCON,#0x50
-;	pgc.c:88: Serial_SendByte(0x09); // request gravity y
+;	pgc.c:89: Serial_SendByte(0x09); // request gravity y
 	mov	dpl, #0x09
 	lcall	_Serial_SendByte
-;	pgc.c:89: gravity_y = Serial_ReadFloat(); // wait answer and save
+;	pgc.c:90: gravity_y = Serial_ReadFloat(); // wait answer and save
 	lcall	_Serial_ReadFloat
-	mov	_gravity_y,dpl
-	mov	(_gravity_y + 1),dph
-	mov	(_gravity_y + 2),b
-	mov	(_gravity_y + 3),a
-;	pgc.c:93: TMOD &= 0xF0;
+	mov	r4, dpl
+	mov	r5, dph
+	mov	r6, b
+	mov	r7, a
+	mov	dptr,#_gravity_y
+	mov	a,r4
+	movx	@dptr,a
+	mov	a,r5
+	inc	dptr
+	movx	@dptr,a
+	mov	a,r6
+	inc	dptr
+	movx	@dptr,a
+	mov	a,r7
+	inc	dptr
+	movx	@dptr,a
+;	pgc.c:94: TMOD &= 0xF0;
 	anl	_TMOD,#0xf0
-;	pgc.c:94: TMOD |= 0x01;
+;	pgc.c:95: TMOD |= 0x01;
 	orl	_TMOD,#0x01
-;	pgc.c:96: TH0 = 0x00;
+;	pgc.c:97: TH0 = 0x00;
 	mov	_TH0,#0x00
-;	pgc.c:97: TL0 = 0x00;
+;	pgc.c:98: TL0 = 0x00;
 	mov	_TL0,#0x00
-;	pgc.c:99: ET0 = 0; // ignore for now
+;	pgc.c:100: ET0 = 0; // ignore for now
 ;	assignBit
 	clr	_ET0
-;	pgc.c:101: EA = 1;
+;	pgc.c:102: EA = 1;
 ;	assignBit
 	setb	_EA
-;	pgc.c:103: TR0 = 1;
+;	pgc.c:104: TR0 = 1;
 ;	assignBit
 	setb	_TR0
-;	pgc.c:108: for (key=1; key<=3; key++) {
+;	pgc.c:109: for (key=1; key<=3; key++) {
 	mov	r7,#0x01
-00149$:
-;	pgc.c:25: float t_go;
-	mov	a,r7
-	anl	a,#0x01
-;	assignBit
-	add	a,#0xff
-	mov	_P0_2,c
-;	pgc.c:26: 
-	mov	a,r7
-	rr	a
-	anl	a,#0x01
-;	assignBit
-	add	a,#0xff
-	mov	_P0_3,c
-;	display.h:60: MAX7219_Write(MAX7219_REG_SHUTDOWN, 0x01);  // wake up
+00153$:
+;	pgc.c:110: MAX7219_Select(key);
+	mov	dpl, r7
+	push	ar7
+	lcall	_MAX7219_Select
+;	display.h:67: MAX7219_Write(MAX7219_REG_SHUTDOWN, 0x01);  // wake up
 	mov	_MAX7219_Write_PARM_2,#0x01
 	mov	dpl, #0x0c
-	push	ar7
 	lcall	_MAX7219_Write
-;	display.h:61: MAX7219_Write(MAX7219_REG_TEST, 0x00);      // normal mode
+;	display.h:68: MAX7219_Write(MAX7219_REG_TEST, 0x00);      // normal mode
 	mov	_MAX7219_Write_PARM_2,#0x00
 	mov	dpl, #0x0f
 	lcall	_MAX7219_Write
-;	display.h:62: MAX7219_Write(MAX7219_REG_DECODE, 0xFF);    // decode mode
+;	display.h:69: MAX7219_Write(MAX7219_REG_DECODE, 0xFF);    // decode mode
 	mov	_MAX7219_Write_PARM_2,#0xff
 	mov	dpl, #0x09
 	lcall	_MAX7219_Write
-;	display.h:63: MAX7219_Write(MAX7219_REG_SCANLIMIT, 0x07); // amount digits
+;	display.h:70: MAX7219_Write(MAX7219_REG_SCANLIMIT, 0x07); // amount digits
 	mov	_MAX7219_Write_PARM_2,#0x07
 	mov	dpl, #0x0b
 	lcall	_MAX7219_Write
-;	display.h:64: MAX7219_Write(MAX7219_REG_INTENSITY, 0x0F); // brightness
+;	display.h:71: MAX7219_Write(MAX7219_REG_INTENSITY, 0x0F); // brightness
 	mov	_MAX7219_Write_PARM_2,#0x0f
 	mov	dpl, #0x0a
 	lcall	_MAX7219_Write
 	pop	ar7
-;	pgc.c:108: for (key=1; key<=3; key++) {
+;	pgc.c:109: for (key=1; key<=3; key++) {
 	inc	r7
 	mov	a,r7
 	add	a,#0xff - 0x03
-	jnc	00149$
-;	pgc.c:114: while (1) {
-00139$:
-;	pgc.c:66: Serial_SendByte(0x20); // request package
-	mov	dpl, #0x20
-	lcall	_Serial_SendByte
-;	pgc.c:68: ut = Serial_ReadFloat();
-	lcall	_Serial_ReadFloat
-	mov	_ut,dpl
-	mov	(_ut + 1),dph
-	mov	(_ut + 2),b
-	mov	(_ut + 3),a
-;	pgc.c:69: pos_x = Serial_ReadFloat();
-	lcall	_Serial_ReadFloat
-	mov	_pos_x,dpl
-	mov	(_pos_x + 1),dph
-	mov	(_pos_x + 2),b
-	mov	(_pos_x + 3),a
-;	pgc.c:70: pos_y = Serial_ReadFloat();
-	lcall	_Serial_ReadFloat
-	mov	_pos_y,dpl
-	mov	(_pos_y + 1),dph
-	mov	(_pos_y + 2),b
-	mov	(_pos_y + 3),a
-;	pgc.c:71: vel_x = Serial_ReadFloat();
-	lcall	_Serial_ReadFloat
-	mov	_vel_x,dpl
-	mov	(_vel_x + 1),dph
-	mov	(_vel_x + 2),b
-	mov	(_vel_x + 3),a
-;	pgc.c:72: vel_y = Serial_ReadFloat();
-	lcall	_Serial_ReadFloat
-	mov	_vel_y,dpl
-	mov	(_vel_y + 1),dph
-	mov	(_vel_y + 2),b
-	mov	(_vel_y + 3),a
-;	pgc.c:73: angle = Serial_ReadFloat();
-	lcall	_Serial_ReadFloat
-	mov	_angle,dpl
-	mov	(_angle + 1),dph
-	mov	(_angle + 2),b
-	mov	(_angle + 3),a
-;	pgc.c:74: ang_vel = Serial_ReadFloat();
-	lcall	_Serial_ReadFloat
-	mov	_ang_vel,dpl
-	mov	(_ang_vel + 1),dph
-	mov	(_ang_vel + 2),b
-	mov	(_ang_vel + 3),a
-;	pgc.c:75: av_accel = Serial_ReadFloat();
-	lcall	_Serial_ReadFloat
-	mov	_av_accel,dpl
-	mov	(_av_accel + 1),dph
-	mov	(_av_accel + 2),b
-	mov	(_av_accel + 3),a
-;	pgc.c:76: av_accel_ang = Serial_ReadFloat();
-	lcall	_Serial_ReadFloat
-	mov	_av_accel_ang,dpl
-	mov	(_av_accel_ang + 1),dph
-	mov	(_av_accel_ang + 2),b
-	mov	(_av_accel_ang + 3),a
-;	pgc.c:117: t_go = t_go0 - ut;
-	push	_ut
-	push	(_ut + 1)
-	push	(_ut + 2)
-	push	(_ut + 3)
-	mov	dptr,#0x0000
-	mov	b, #0xf0
-	mov	a, #0x41
-	lcall	___fssub
-	mov	_t_go,dpl
-	mov	(_t_go + 1),dph
-	mov	(_t_go + 2),b
-	mov	(_t_go + 3),a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-;	pgc.c:119: if (t_go < 3.0f) t_go = 3.0f;
-	clr	a
-	push	acc
-	push	acc
-	mov	a,#0x40
-	push	acc
-	push	acc
-	mov	dpl, _t_go
-	mov	dph, (_t_go + 1)
-	mov	b, (_t_go + 2)
-	mov	a, (_t_go + 3)
-	lcall	___fslt
-	mov	r7, dpl
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	mov	a,r7
-	jz	00103$
-	clr	a
-	mov	_t_go,a
-	mov	(_t_go + 1),a
-	mov	(_t_go + 2),#0x40
-	mov	(_t_go + 3),#0x40
-00103$:
-;	pgc.c:58: float _a = -12.0f / (t_go * t_go);
-	push	_t_go
-	push	(_t_go + 1)
-	push	(_t_go + 2)
-	push	(_t_go + 3)
-	mov	dpl, _t_go
-	mov	dph, (_t_go + 1)
-	mov	b, (_t_go + 2)
-	mov	a, (_t_go + 3)
-	lcall	___fsmul
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	ar4
-	push	ar5
-	push	ar6
-	push	ar7
-;	pgc.c:59: float _b = -6.0f / t_go;
-	mov	dptr,#0x0000
-	mov	b, #0x40
-	mov	a, #0xc1
-	lcall	___fsdiv
-	mov	_main__a_50000_119,dpl
-	mov	(_main__a_50000_119 + 1),dph
-	mov	(_main__a_50000_119 + 2),b
-	mov	(_main__a_50000_119 + 3),a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	_t_go
-	push	(_t_go + 1)
-	push	(_t_go + 2)
-	push	(_t_go + 3)
-;	pgc.c:61: a0_x = _a * pos_x + _b * vel_x;
-	mov	dptr,#0x0000
-	mov	a,#0xc0
-	mov	b,a
-	lcall	___fsdiv
-	mov	_main__b_50000_119,dpl
-	mov	(_main__b_50000_119 + 1),dph
-	mov	(_main__b_50000_119 + 2),b
-	mov	(_main__b_50000_119 + 3),a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	_pos_x
-	push	(_pos_x + 1)
-	push	(_pos_x + 2)
-	push	(_pos_x + 3)
-	mov	dpl, _main__a_50000_119
-	mov	dph, (_main__a_50000_119 + 1)
-	mov	b, (_main__a_50000_119 + 2)
-	mov	a, (_main__a_50000_119 + 3)
-	lcall	___fsmul
-	mov	r0, dpl
-	mov	r1, dph
-	mov	r2, b
-	mov	r3, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	ar3
-	push	ar2
-	push	ar1
-	push	ar0
-	push	_vel_x
-	push	(_vel_x + 1)
-	push	(_vel_x + 2)
-	push	(_vel_x + 3)
-	mov	dpl, _main__b_50000_119
-	mov	dph, (_main__b_50000_119 + 1)
-	mov	b, (_main__b_50000_119 + 2)
-	mov	a, (_main__b_50000_119 + 3)
-	lcall	___fsmul
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	pop	ar0
-	pop	ar1
-	pop	ar2
-	pop	ar3
-	push	ar4
-	push	ar5
-	push	ar6
-	push	ar7
-	mov	dpl, r0
-	mov	dph, r1
-	mov	b, r2
-	mov	a, r3
-	lcall	___fsadd
-	mov	_a0_x,dpl
-	mov	(_a0_x + 1),dph
-	mov	(_a0_x + 2),b
-	mov	(_a0_x + 3),a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-;	pgc.c:62: a0_y = _a * pos_y + _b * vel_y - gravity_y;
-	push	_pos_y
-	push	(_pos_y + 1)
-	push	(_pos_y + 2)
-	push	(_pos_y + 3)
-	mov	dpl, _main__a_50000_119
-	mov	dph, (_main__a_50000_119 + 1)
-	mov	b, (_main__a_50000_119 + 2)
-	mov	a, (_main__a_50000_119 + 3)
-	lcall	___fsmul
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	ar7
-	push	ar6
-	push	ar5
-	push	ar4
-	push	_vel_y
-	push	(_vel_y + 1)
-	push	(_vel_y + 2)
-	push	(_vel_y + 3)
-	mov	dpl, _main__b_50000_119
-	mov	dph, (_main__b_50000_119 + 1)
-	mov	b, (_main__b_50000_119 + 2)
-	mov	a, (_main__b_50000_119 + 3)
-	lcall	___fsmul
-	mov	r0, dpl
-	mov	r1, dph
-	mov	r2, b
-	mov	r3, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	pop	ar4
-	pop	ar5
-	pop	ar6
-	pop	ar7
-	push	ar0
-	push	ar1
-	push	ar2
-	push	ar3
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	___fsadd
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	_gravity_y
-	push	(_gravity_y + 1)
-	push	(_gravity_y + 2)
-	push	(_gravity_y + 3)
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	___fssub
-	mov	_a0_y,dpl
-	mov	(_a0_y + 1),dph
-	mov	(_a0_y + 2),b
-	mov	(_a0_y + 3),a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-;	pgc.c:125: throttle = sqrtf(a0_x * a0_x + a0_y * a0_y) / av_accel;
-	push	_a0_x
-	push	(_a0_x + 1)
-	push	(_a0_x + 2)
-	push	(_a0_x + 3)
-	mov	dpl, _a0_x
-	mov	dph, (_a0_x + 1)
-	mov	b, (_a0_x + 2)
-	mov	a, (_a0_x + 3)
-	lcall	___fsmul
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	ar7
-	push	ar6
-	push	ar5
-	push	ar4
-	push	_a0_y
-	push	(_a0_y + 1)
-	push	(_a0_y + 2)
-	push	(_a0_y + 3)
-	mov	dpl, _a0_y
-	mov	dph, (_a0_y + 1)
-	mov	b, (_a0_y + 2)
-	mov	a, (_a0_y + 3)
-	lcall	___fsmul
-	mov	r0, dpl
-	mov	r1, dph
-	mov	r2, b
-	mov	r3, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	pop	ar4
-	pop	ar5
-	pop	ar6
-	pop	ar7
-	push	ar0
-	push	ar1
-	push	ar2
-	push	ar3
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	___fsadd
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	_sqrtf
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	push	_av_accel
-	push	(_av_accel + 1)
-	push	(_av_accel + 2)
-	push	(_av_accel + 3)
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	___fsdiv
-	mov	_throttle,dpl
-	mov	(_throttle + 1),dph
-	mov	(_throttle + 2),b
-	mov	(_throttle + 3),a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-;	pgc.c:128: if (throttle != 0) {
-	mov	b,_throttle
-	mov	a,(_throttle + 1)
-	orl	b,a
-	mov	a,(_throttle + 2)
-	orl	b,a
-	mov	a,(_throttle + 3)
-	anl	a,#0x7F
-	orl	a,b
-	jnz	00272$
-	ljmp	00110$
-00272$:
-;	pgc.c:130: float delta_angle = angle_from_vec2(a0_x, a0_y) - angle;
-	mov	r4,_a0_y
-	mov	r5,(_a0_y + 1)
-	mov	r6,(_a0_y + 2)
-	mov	r7,(_a0_y + 3)
-	mov	r0,_a0_x
-	mov	r1,(_a0_x + 1)
-	mov	r2,(_a0_x + 2)
-	mov	r3,(_a0_x + 3)
-	mov	_atan2f_PARM_2,r4
-	mov	(_atan2f_PARM_2 + 1),r5
-	mov	(_atan2f_PARM_2 + 2),r6
-	mov	a,r7
-	cpl	acc.7
-	mov	(_atan2f_PARM_2 + 3),a
-	mov	dpl, r0
-	mov	dph, r1
-	mov	b, r2
-	mov	a, r3
-	lcall	_atan2f
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	push	_angle
-	push	(_angle + 1)
-	push	(_angle + 2)
-	push	(_angle + 3)
-;	pgc.c:132: if (delta_angle > 3.14159265f) {
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	___fssub
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	ar7
-	push	ar6
-	push	ar5
-	push	ar4
-	push	ar4
-	push	ar5
-	push	ar6
-	push	ar7
-	mov	dptr,#0x0fdb
-	mov	b, #0x49
-	mov	a, #0x40
-	lcall	___fslt
-	mov	r3, dpl
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	pop	ar4
-	pop	ar5
-	pop	ar6
-	pop	ar7
-	mov	a,r3
-	jz	00107$
-;	pgc.c:133: delta_angle -= 6.2831853f;
-	mov	a,#0xdb
-	push	acc
-	mov	a,#0x0f
-	push	acc
-	mov	a,#0xc9
-	push	acc
-	mov	a,#0x40
-	push	acc
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	___fssub
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	sjmp	00108$
-00107$:
-;	pgc.c:134: } else if (delta_angle < -3.14159265f) {
-	push	ar7
-	push	ar6
-	push	ar5
-	push	ar4
-	mov	a,#0xdb
-	push	acc
-	mov	a,#0x0f
-	push	acc
-	mov	a,#0x49
-	push	acc
-	mov	a,#0xc0
-	push	acc
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	___fslt
-	mov	r3, dpl
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	pop	ar4
-	pop	ar5
-	pop	ar6
-	pop	ar7
-	mov	a,r3
-	jz	00108$
-;	pgc.c:135: delta_angle += 6.2831853f;
-	mov	a,#0xdb
-	push	acc
-	mov	a,#0x0f
-	push	acc
-	mov	a,#0xc9
-	push	acc
-	mov	a,#0x40
-	push	acc
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	___fsadd
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-00108$:
-;	pgc.c:140: gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / av_accel_ang;
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	push	ar7
-	push	ar6
-	push	ar5
-	push	ar4
-	lcall	_fabsf
-	mov	r0, dpl
-	mov	r1, dph
-	mov	r2, b
-	mov	r3, a
-	push	ar0
-	push	ar1
-	push	ar2
-	push	ar3
-	mov	dptr,#0xcccd
-	mov	b, #0x4c
-	mov	a, #0x3f
-	lcall	___fsmul
-	mov	r0, dpl
-	mov	r1, dph
-	mov	r2, b
-	mov	r3, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	_av_accel_ang
-	push	(_av_accel_ang + 1)
-	push	(_av_accel_ang + 2)
-	push	(_av_accel_ang + 3)
-	mov	dpl, r0
-	mov	dph, r1
-	mov	b, r2
-	mov	a, r3
-	lcall	___fsmul
-	mov	r0, dpl
-	mov	r1, dph
-	mov	r2, b
-	mov	r3, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	_throttle
-	push	(_throttle + 1)
-	push	(_throttle + 2)
-	push	(_throttle + 3)
-	mov	dpl, r0
-	mov	dph, r1
-	mov	b, r2
-	mov	a, r3
-	lcall	___fsmul
-	mov	r0, dpl
-	mov	r1, dph
-	mov	r2, b
-	mov	r3, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	mov	dpl, r0
-	mov	dph, r1
-	mov	b, r2
-	mov	a, r3
-	lcall	_sqrtf
-	mov	r0, dpl
-	mov	r1, dph
-	mov	r2, b
-	mov	r3, a
-	pop	ar4
-	pop	ar5
-	pop	ar6
-	pop	ar7
-;	utils.h:17: return value < 0 ? -1 : 1;
-	push	ar3
-	push	ar2
-	push	ar1
-	push	ar0
-	clr	a
-	push	acc
-	push	acc
-	push	acc
-	push	acc
-	mov	dpl, r4
-	mov	dph, r5
-	mov	b, r6
-	mov	a, r7
-	lcall	___fslt
-	mov	r7, dpl
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	pop	ar0
-	pop	ar1
-	pop	ar2
-	pop	ar3
-	mov	a,r7
-	jz	00153$
-	mov	r6,#0xff
-	mov	r7,#0xff
-	sjmp	00154$
-00153$:
-	mov	r6,#0x01
+	jnc	00153$
+;	pgc.c:115: PROG = 10;
+	mov	_PROG,#0x0a
+;	pgc.c:116: VERB = 40;
+	mov	_VERB,#0x28
+;	pgc.c:117: NOUN = 66;
+	mov	_NOUN,#0x42
+;	pgc.c:118: float a=0.0f;
+	mov	r4,#0x00
+	mov	r5,#0x00
+	mov	r6,#0x00
 	mov	r7,#0x00
-00154$:
-	mov	dpl, r6
-	mov	dph, r7
+;	pgc.c:119: float b=0.0f;
+	mov	r0,#0x00
+	mov	r1,#0x00
+	mov	r2,#0x00
+	mov	r3,#0x00
+;	pgc.c:120: while (1) { // ALGUM PROBLEMA AQ!
+00103$:
+;	pgc.c:121: PROG++;
+	inc	_PROG
+;	pgc.c:122: VERB++;
+	inc	_VERB
+;	pgc.c:123: NOUN++;
+	inc	_NOUN
+;	pgc.c:124: a+=0.1f;
 	push	ar3
 	push	ar2
 	push	ar1
 	push	ar0
-	lcall	___sint2fs
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	pop	ar0
-	pop	ar1
-	pop	ar2
-	pop	ar3
-;	pgc.c:140: gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / av_accel_ang;
-	push	ar4
-	push	ar5
-	push	ar6
-	push	ar7
-	mov	dpl, r0
-	mov	dph, r1
-	mov	b, r2
-	mov	a, r3
-	lcall	___fsmul
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	ar4
-	push	ar5
-	push	ar6
-	push	ar7
-	mov	dpl, _ang_vel
-	mov	dph, (_ang_vel + 1)
-	mov	b, (_ang_vel + 2)
-	mov	a, (_ang_vel + 3)
-	lcall	___fssub
-	mov	r4, dpl
-	mov	r5, dph
-	mov	r6, b
-	mov	r7, a
-	mov	a,sp
-	add	a,#0xfc
-	mov	sp,a
-	push	_av_accel_ang
-	push	(_av_accel_ang + 1)
-	push	(_av_accel_ang + 2)
-	push	(_av_accel_ang + 3)
+	mov	a,#0xcd
+	push	acc
+	dec	a
+	push	acc
+	push	acc
+	mov	a,#0x3d
+	push	acc
+;	pgc.c:125: b+=0.5f;
 	mov	dpl, r4
 	mov	dph, r5
 	mov	b, r6
 	mov	a, r7
-	lcall	___fsdiv
-	mov	_gimbal,dpl
-	mov	(_gimbal + 1),dph
-	mov	(_gimbal + 2),b
-	mov	(_gimbal + 3),a
+	lcall	___fsadd
+	mov	r4, dpl
+	mov	r5, dph
+	mov	r6, b
+	mov	r7, a
 	mov	a,sp
 	add	a,#0xfc
 	mov	sp,a
-	sjmp	00111$
-00110$:
-;	pgc.c:142: gimbal = 0.0f;
+	pop	ar0
+	pop	ar1
+	pop	ar2
+	pop	ar3
+	push	ar7
+	push	ar6
+	push	ar5
+	push	ar4
 	clr	a
-	mov	_gimbal,a
-	mov	(_gimbal + 1),a
-	mov	(_gimbal + 2),a
-	mov	(_gimbal + 3),a
-00111$:
-;	pgc.c:146: Serial_SendByte(0x21); // send package
-	mov	dpl, #0x21
-	lcall	_Serial_SendByte
-;	pgc.c:147: Serial_SendFloat(throttle); // throttle
-	mov	dpl, _throttle
-	mov	dph, (_throttle + 1)
-	mov	b, (_throttle + 2)
-	mov	a, (_throttle + 3)
-	lcall	_Serial_SendFloat
-;	pgc.c:148: Serial_SendFloat(gimbal); // gimbal
-	mov	dpl, _gimbal
-	mov	dph, (_gimbal + 1)
-	mov	b, (_gimbal + 2)
-	mov	a, (_gimbal + 3)
-	lcall	_Serial_SendFloat
-;	pgc.c:151: MAX7219_WriteByte(1, PROG);
-	mov	_MAX7219_WriteByte_PARM_2,_PROG
+	push	acc
+	push	acc
+	push	acc
+	mov	a,#0x3f
+	push	acc
+;	pgc.c:127: Display_WriteDigit(1, PROG);
+	mov	dpl, r0
+	mov	dph, r1
+	mov	b, r2
+	mov	a, r3
+	lcall	___fsadd
+	mov	r0, dpl
+	mov	r1, dph
+	mov	r2, b
+	mov	r3, a
+	mov	a,sp
+	add	a,#0xfc
+	mov	sp,a
+	pop	ar4
+	pop	ar5
+	pop	ar6
+	pop	ar7
+	mov	_Display_WriteDigit_PARM_2,_PROG
 	mov	dpl, #0x01
-	lcall	_MAX7219_WriteByte
-;	pgc.c:152: MAX7219_WriteByte(2, VERB);
-	mov	_MAX7219_WriteByte_PARM_2,_VERB
+	push	ar7
+	push	ar6
+	push	ar5
+	push	ar4
+	push	ar3
+	push	ar2
+	push	ar1
+	push	ar0
+	lcall	_Display_WriteDigit
+	pop	ar0
+	pop	ar1
+	pop	ar2
+	pop	ar3
+	pop	ar4
+	pop	ar5
+	pop	ar6
+	pop	ar7
+;	pgc.c:128: Display_WriteDigit(2, VERB);
+	mov	_Display_WriteDigit_PARM_2,_VERB
 	mov	dpl, #0x02
-	lcall	_MAX7219_WriteByte
-;	pgc.c:153: MAX7219_WriteByte(3, NOUN);
-	mov	_MAX7219_WriteByte_PARM_2,_NOUN
+	push	ar7
+	push	ar6
+	push	ar5
+	push	ar4
+	push	ar3
+	push	ar2
+	push	ar1
+	push	ar0
+	lcall	_Display_WriteDigit
+	pop	ar0
+	pop	ar1
+	pop	ar2
+	pop	ar3
+	pop	ar4
+	pop	ar5
+	pop	ar6
+	pop	ar7
+;	pgc.c:129: Display_WriteDigit(3, NOUN);
+	mov	_Display_WriteDigit_PARM_2,_NOUN
 	mov	dpl, #0x03
-	lcall	_MAX7219_WriteByte
-;	pgc.c:155: MAX7219_WriteFloat(1, t_go);
-	mov	_MAX7219_WriteFloat_PARM_2,_t_go
-	mov	(_MAX7219_WriteFloat_PARM_2 + 1),(_t_go + 1)
-	mov	(_MAX7219_WriteFloat_PARM_2 + 2),(_t_go + 2)
-	mov	(_MAX7219_WriteFloat_PARM_2 + 3),(_t_go + 3)
+	push	ar7
+	push	ar6
+	push	ar5
+	push	ar4
+	push	ar3
+	push	ar2
+	push	ar1
+	push	ar0
+	lcall	_Display_WriteDigit
+	pop	ar0
+	pop	ar1
+	pop	ar2
+	pop	ar3
+	pop	ar4
+	pop	ar5
+	pop	ar6
+	pop	ar7
+;	pgc.c:131: Display_WriteFloat(1, a);
+	mov	_Display_WriteFloat_PARM_2,r4
+	mov	(_Display_WriteFloat_PARM_2 + 1),r5
+	mov	(_Display_WriteFloat_PARM_2 + 2),r6
+	mov	(_Display_WriteFloat_PARM_2 + 3),r7
 	mov	dpl, #0x01
-	lcall	_MAX7219_WriteFloat
-;	pgc.c:158: key = Keyboard_Read();
-	lcall	_Keyboard_Read
-	mov	r7, dpl
-;	pgc.c:160: if (key == 0xFF) {
-	cjne	r7,#0xff,00113$
-;	pgc.c:161: dsky_key_pressed = false;
-	mov	_dsky_key_pressed,#0x00
-;	pgc.c:162: continue;
-	ljmp	00139$
-00113$:
-;	pgc.c:165: if (dsky_key_pressed) continue;
-	mov	a,_dsky_key_pressed
-	jz	00278$
-	ljmp	00139$
-00278$:
-;	pgc.c:167: dsky_key_pressed = true;
-	mov	_dsky_key_pressed,#0x01
-;	pgc.c:169: if (key == 0x0A) { // CLR (*)
-	cjne	r7,#0x0a,00117$
-;	pgc.c:170: dsky_buffer = 0;
-	mov	_dsky_buffer,#0x00
-;	pgc.c:171: continue;
-	ljmp	00139$
-00117$:
-;	pgc.c:174: if (key == 0x0B) { // ENTER (#)
-	cjne	r7,#0x0b,00129$
-;	pgc.c:175: if (dsky_state == 0) continue;
-	mov	a,_dsky_state
-	jnz	00283$
-	ljmp	00139$
-00283$:
-;	pgc.c:177: if (dsky_state == 1) PROG = dsky_buffer;
-	mov	a,#0x01
-	cjne	a,_dsky_state,00126$
-	mov	_PROG,_dsky_buffer
-	sjmp	00127$
-00126$:
-;	pgc.c:178: else if (dsky_state == 2) VERB = dsky_buffer;
-	mov	a,#0x02
-	cjne	a,_dsky_state,00123$
-	mov	_VERB,_dsky_buffer
-	sjmp	00127$
-00123$:
-;	pgc.c:179: else if (dsky_state == 3) NOUN = dsky_buffer;
-	mov	a,#0x03
-	cjne	a,_dsky_state,00127$
-	mov	_NOUN,_dsky_buffer
-00127$:
-;	pgc.c:181: dsky_state = 0;
-	mov	_dsky_state,#0x00
-;	pgc.c:183: continue;
-	ljmp	00139$
-00129$:
-;	pgc.c:186: if (key == 0x0C) { // PROG
-	cjne	r7,#0x0c,00131$
-;	pgc.c:187: dsky_state = 1;
-	mov	_dsky_state,#0x01
-;	pgc.c:188: continue;
-	ljmp	00139$
-00131$:
-;	pgc.c:191: if (key == 0x0D) { // VERB
-	cjne	r7,#0x0d,00133$
-;	pgc.c:192: dsky_state = 2;
-	mov	_dsky_state,#0x02
-;	pgc.c:193: continue;
-	ljmp	00139$
-00133$:
-;	pgc.c:196: if (key == 0x0E) { // NOUN
-	cjne	r7,#0x0e,00135$
-;	pgc.c:197: dsky_state = 3;
-	mov	_dsky_state,#0x03
-;	pgc.c:198: continue;
-	ljmp	00139$
-00135$:
-;	pgc.c:201: if (dsky_state != 0) { // 0 - 9
-	mov	a,_dsky_state
-	jnz	00296$
-	ljmp	00139$
-00296$:
-;	pgc.c:202: dsky_buffer = key; // DEBUG
-	mov	_dsky_buffer,r7
-;	pgc.c:205: }
-	ljmp	00139$
+	push	ar7
+	push	ar6
+	push	ar5
+	push	ar4
+	push	ar3
+	push	ar2
+	push	ar1
+	push	ar0
+	lcall	_Display_WriteFloat
+	pop	ar0
+	pop	ar1
+	pop	ar2
+	pop	ar3
+	pop	ar4
+	pop	ar5
+	pop	ar6
+	pop	ar7
+;	pgc.c:132: Display_WriteFloat(2, b);
+	mov	_Display_WriteFloat_PARM_2,r0
+	mov	(_Display_WriteFloat_PARM_2 + 1),r1
+	mov	(_Display_WriteFloat_PARM_2 + 2),r2
+	mov	(_Display_WriteFloat_PARM_2 + 3),r3
+	mov	dpl, #0x02
+	push	ar7
+	push	ar6
+	push	ar5
+	push	ar4
+	push	ar3
+	push	ar2
+	push	ar1
+	push	ar0
+	lcall	_Display_WriteFloat
+	pop	ar0
+	pop	ar1
+	pop	ar2
+	pop	ar3
+	pop	ar4
+	pop	ar5
+	pop	ar6
+	pop	ar7
+;	pgc.c:133: Display_WriteFloat(3, a+b);
+	push	ar7
+	push	ar6
+	push	ar5
+	push	ar4
+	push	ar3
+	push	ar2
+	push	ar1
+	push	ar0
+	push	ar0
+	push	ar1
+	push	ar2
+	push	ar3
+	mov	dpl, r4
+	mov	dph, r5
+	mov	b, r6
+	mov	a, r7
+	lcall	___fsadd
+	mov	_Display_WriteFloat_PARM_2,dpl
+	mov	(_Display_WriteFloat_PARM_2 + 1),dph
+	mov	(_Display_WriteFloat_PARM_2 + 2),b
+	mov	(_Display_WriteFloat_PARM_2 + 3),a
+	mov	a,sp
+	add	a,#0xfc
+	mov	sp,a
+	mov	dpl, #0x03
+	lcall	_Display_WriteFloat
+;	pgc.c:135: Delay_polling(300);
+	mov	dptr,#0x012c
+	lcall	_Delay_polling
+	pop	ar0
+	pop	ar1
+	pop	ar2
+	pop	ar3
+	pop	ar4
+	pop	ar5
+	pop	ar6
+	pop	ar7
+;	pgc.c:232: dsky_buffer = key; // DEBUG
+;	pgc.c:235: }
+	ljmp	00103$
 	.area CSEG    (CODE)
 	.area CONST   (CODE)
 	.area XINIT   (CODE)

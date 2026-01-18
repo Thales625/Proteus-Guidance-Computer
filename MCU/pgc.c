@@ -4,17 +4,17 @@
 
 #include "keyboard.h"
 #include "display.h"
-
+#include "delay.h"
 #include "serial.h"
 #include "utils.h"
 
 // STATES
-float pos_x, pos_y;
-float vel_x, vel_y;
-float angle, ang_vel;
-float av_accel, av_accel_ang;
-float ut;
-float gravity_y;
+__xdata float pos_x, pos_y;
+__xdata float vel_x, vel_y;
+__xdata float angle, ang_vel;
+__xdata float av_accel, av_accel_ang;
+__xdata float ut;
+__xdata float gravity_y;
 
 // CONTROL
 float throttle, gimbal;
@@ -79,6 +79,7 @@ inline void read_environment(void) {
 int main(void) {    
     byte_t key;
     float t_go0 = 30.0f;
+    byte_t counter = 0;
 
     { // CONFIG SERIAL
         Serial_ConfigTimer(0xFD); // 9.600 bps | 11.0592 MHz
@@ -106,12 +107,41 @@ int main(void) {
     { // CONFIG 7SEG DISPLAY CONTROLLERS
         // using the var <key> to save memory
         for (key=1; key<=3; key++) {
+           
             MAX7219_Select(key);
             MAX7219_Init();
         }
     }
 
+    /*
+    PROG = 10;
+    VERB = 40;
+    NOUN = 66;
+    float a=0.0f;
+    float b=0.0f;
+    while (1) { // ALGUM PROBLEMA AQ!
+        PROG++;
+        VERB++;
+        NOUN++;
+        a+=0.1f;
+        b+=0.5f;
+        
+        Display_WriteDigit(1, PROG);
+        Display_WriteDigit(2, VERB);
+        Display_WriteDigit(3, NOUN);
+
+        Display_WriteFloat(1, a);
+        Display_WriteFloat(2, b);
+        Display_WriteFloat(3, a+b);
+
+        Delay_polling(300);
+    }
+    // END DEBUG
+    */
+
     while (1) {
+        counter++;
+
         read_environment();
 
         t_go = t_go0 - ut;
@@ -148,11 +178,14 @@ int main(void) {
         Serial_SendFloat(gimbal); // gimbal
 
         // UPDATE DSKY
-        MAX7219_WriteByte(1, PROG);
-        MAX7219_WriteByte(2, VERB);
-        MAX7219_WriteByte(3, NOUN);
+        if (counter > 10) {
+            counter = 0;
+            Display_WriteDigit(1, PROG);
+            Display_WriteDigit(2, VERB);
+            Display_WriteDigit(3, NOUN);
 
-        MAX7219_WriteFloat(1, t_go);
+            Display_WriteFloat(1, t_go);
+        }
 
         // DSKY READ KEYBOARD
         key = Keyboard_Read();

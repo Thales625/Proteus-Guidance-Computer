@@ -71,9 +71,9 @@ void inline MAX7219_Init(void) {
     MAX7219_Write(MAX7219_REG_INTENSITY, 0x0F); // brightness
 }
 
-void Display_WriteFloat(byte_t index, float value) {
+void Display_Write(byte_t index, float register_value, byte_t digit_value) {
     int digit;
-    long number = (long) (value * 100);
+    long number = (long) (register_value * 100);
 
     MAX7219_Select(index);
     
@@ -83,15 +83,9 @@ void Display_WriteFloat(byte_t index, float value) {
         
         MAX7219_Write(i, i==4 ? digit | 0x80 : digit);
     }
-}
 
-void Display_WriteDigit(byte_t index, byte_t value) {
-    MAX7219_Select(index);
-    
-    // if (value > 99) value = 99;
-    
-    MAX7219_Write(7, value/10);
-    MAX7219_Write(8, value%10);
+    MAX7219_Write(7, digit_value/10);
+    MAX7219_Write(8, digit_value%10);
 }
 
 #endif

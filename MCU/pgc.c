@@ -4,9 +4,9 @@
 
 #include "keyboard.h"
 #include "display.h"
-#include "delay.h"
 #include "serial.h"
 #include "utils.h"
+#include "delay.h"
 
 // STATES
 __xdata float pos_x, pos_y;
@@ -28,14 +28,6 @@ float t_go;
 byte_t dsky_buffer = 0x00;
 byte_t dsky_state = 0;
 bool dsky_key_pressed = false;
-
-/*
-DSKY States
- 0 - Standby
- 1 - editting PROG
- 2 - editting VERB
- 3 - editting NOUN
-*/
 
 /*
 byte_t COUNTER=0;
@@ -107,37 +99,10 @@ int main(void) {
     { // CONFIG 7SEG DISPLAY CONTROLLERS
         // using the var <key> to save memory
         for (key=1; key<=3; key++) {
-           
             MAX7219_Select(key);
             MAX7219_Init();
         }
     }
-
-    /*
-    PROG = 10;
-    VERB = 40;
-    NOUN = 66;
-    float a=0.0f;
-    float b=0.0f;
-    while (1) { // ALGUM PROBLEMA AQ!
-        PROG++;
-        VERB++;
-        NOUN++;
-        a+=0.1f;
-        b+=0.5f;
-        
-        Display_WriteDigit(1, PROG);
-        Display_WriteDigit(2, VERB);
-        Display_WriteDigit(3, NOUN);
-
-        Display_WriteFloat(1, a);
-        Display_WriteFloat(2, b);
-        Display_WriteFloat(3, a+b);
-
-        Delay_polling(300);
-    }
-    // END DEBUG
-    */
 
     while (1) {
         counter++;
@@ -178,13 +143,11 @@ int main(void) {
         Serial_SendFloat(gimbal); // gimbal
 
         // UPDATE DSKY
-        if (counter > 10) {
+        if (counter > 5) {
             counter = 0;
-            Display_WriteDigit(1, PROG);
-            Display_WriteDigit(2, VERB);
-            Display_WriteDigit(3, NOUN);
-
-            Display_WriteFloat(1, t_go);
+            Display_Write(1, t_go, PROG);
+            Display_Write(2, 0, VERB);
+            Display_Write(3, 0, NOUN);
         }
 
         // DSKY READ KEYBOARD
@@ -199,6 +162,14 @@ int main(void) {
 
         dsky_key_pressed = true;
 
+        /*
+        DSKY States
+        0 - Standby
+        1 - editting PROG
+        2 - editting VERB
+        3 - editting NOUN
+        */
+
         if (key == 0x0A) { // CLR (*)
             dsky_buffer = 0;
             continue;
@@ -211,6 +182,7 @@ int main(void) {
             else if (dsky_state == 2) VERB = dsky_buffer;
             else if (dsky_state == 3) NOUN = dsky_buffer;
 
+            dsky_buffer = 0;
             dsky_state = 0;
             
             continue;
@@ -232,7 +204,8 @@ int main(void) {
         }
      
         if (dsky_state != 0) { // 0 - 9
-            dsky_buffer = key; // DEBUG
+            dsky_buffer *= 10;
+            dsky_buffer += key;
         }
     }
 }

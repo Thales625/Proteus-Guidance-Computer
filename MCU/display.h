@@ -1,12 +1,10 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
-#define _ASM_MOV_TO_PIN(pin_name) __asm mov _##pin_name, c __endasm
-#define ASM_MOV_C_TO_PIN(pin) _ASM_MOV_TO_PIN(pin)
-
 #include "at89x52.h"
 #include "ports.h"
 #include "types.h"
+#include "utils.h"
 
 #define MAX7219_REG_DECODE    0x09
 #define MAX7219_REG_INTENSITY 0x0A
@@ -14,26 +12,19 @@
 #define MAX7219_REG_SHUTDOWN  0x0C
 #define MAX7219_REG_TEST      0x0F
 
-void MAX7219_SPI_Write_Byte(byte_t data) {
+void MAX7219_WriteByte(byte_t data) {
     byte_t i;
 
     (void)data;
 
+    __asm__("mov a, dpl");
+
     for(i=0; i<8; i++) {
         MAX7219_CLK_PIN = 0;
 
-        // MAX7219_DIN_PIN = data & 0x80;
-        // data <<= 1;
-
-        __asm
-            mov a, dpl
-            rlc a
-        __endasm;
-        ASM_MOV_C_TO_PIN(MAX7219_DIN_PIN);
-        __asm
-            mov dpl, a
-        __endasm;
-
+        __asm__("rlc a");
+        ASM_MOV_CARRY_TO_PIN(MAX7219_DIN_PIN);
+        
         MAX7219_CLK_PIN = 1;
     }
 }
@@ -44,22 +35,18 @@ void MAX7219_Select(byte_t index) {
 
     (void)index;
     
-    __asm
-        mov a, dpl
-        rrc a
-    __endasm;
-    ASM_MOV_C_TO_PIN(MAX7219_CS0_PIN);
+    __asm__("mov a, dpl");
+    __asm__("rrc a");
+    ASM_MOV_CARRY_TO_PIN(MAX7219_CS0_PIN);
 
-    __asm
-        rrc a
-    __endasm;
-    ASM_MOV_C_TO_PIN(MAX7219_CS1_PIN);
+    __asm__("rrc a");
+    ASM_MOV_CARRY_TO_PIN(MAX7219_CS1_PIN);
 }
 
 void MAX7219_Write(byte_t reg, byte_t value) {
     MAX7219_CS_PIN = 1; // enable CS
-    MAX7219_SPI_Write_Byte(reg);   // send address
-    MAX7219_SPI_Write_Byte(value); // send value
+    MAX7219_WriteByte(reg);   // send address
+    MAX7219_WriteByte(value); // send value
     MAX7219_CS_PIN = 0; // disable CS
 }
 

@@ -4,9 +4,9 @@
 
 #include "keyboard.h"
 #include "display.h"
+#include "led.h"
 #include "serial.h"
 #include "utils.h"
-#include "delay.h"
 
 // STATES
 __xdata float pos_x, pos_y;
@@ -15,35 +15,21 @@ __xdata float angle, ang_vel;
 __xdata float av_accel, av_accel_ang;
 __xdata float ut;
 __xdata float gravity_y;
+__xdata float fuel_level;
 
 // CONTROL
-float throttle, gimbal;
 byte_t PROG, VERB, NOUN;
-
-// AUX
+float throttle, gimbal;
 float a0_x, a0_y;
 float t_go;
 
 // DKSY
-byte_t dsky_buffer = 0x00;
-byte_t dsky_state = 0;
 bool dsky_key_pressed = false;
+byte_t dsky_state = 0;
+byte_t dsky_PROG = 0, dsky_VERB = 0, dsky_NOUN = 0;
+__xdata float REG1, REG2, REG3;
 
-/*
-byte_t COUNTER=0;
-
-void Timer0ISR(void) __interrupt (1) { // causing crash! (when interrupt in Serial communication)
-    COUNTER++;
-    if (COUNTER >= 70) {
-        Serial_SendByte(0xFE);
-        Serial_SendByte(21);
-        COUNTER = 0;
-    }
-    TH0 = 0x00;
-    TL0 = 0x00; // clear T/C0 interrupt flag
-    // 71.17 ms
-}
-*/
+byte_t led_state = 0b1111;
 
 inline void compute_a0(void) {
     // 4th Order
@@ -73,6 +59,11 @@ int main(void) {
     float t_go0 = 30.0f;
     byte_t counter = 0;
 
+    // RESET XDATA
+    REG1 = 0;
+    REG2 = 0;
+    REG3 = 0;
+
     { // CONFIG SERIAL
         Serial_ConfigTimer(0xFD); // 9.600 bps | 11.0592 MHz
     
@@ -82,16 +73,15 @@ int main(void) {
         gravity_y = Serial_ReadFloat(); // wait answer and save
     }
 
-    { // CONFIG TIMER 0 ISR
+    { // CONFIG TIMER 0
         TMOD &= 0xF0;
         TMOD |= 0x01;
 
         TH0 = 0x00;
         TL0 = 0x00;
         
-        ET0 = 0; // ignore for now
-        // ET0 = 1;
-        EA = 1;
+        ET0 = 0;
+        EA = 0;
 
         TR0 = 1;
     }
@@ -105,8 +95,6 @@ int main(void) {
     }
 
     while (1) {
-        counter++;
-
         read_environment();
 
         t_go = t_go0 - ut;
@@ -143,12 +131,43 @@ int main(void) {
         Serial_SendFloat(gimbal); // gimbal
 
         // UPDATE DSKY
-        if (counter > 5) {
+        counter++;
+        if (counter == 5) {
             counter = 0;
-            Display_Write(1, t_go, PROG);
-            Display_Write(2, 0, VERB);
-            Display_Write(3, 0, NOUN);
-        }
+
+            REG1 = REG2 = REG3 = 0;
+
+            if (dsky_state != 0) { // editting
+                led_state &= 0b1110;
+            } else {
+                led_state |= 0b0001;
+            }
+
+
+            LED_WriteData(led_state);
+
+            if (VERB == 16) {
+                switch (NOUN) {
+                    case 1:
+                        REG1 = t_go;
+                        break;
+                    
+                    case 2:
+                        Serial_SendByte(0x0a);
+                        REG1 = Serial_ReadFloat();
+                        break;
+
+                    default:
+                        break;
+                }
+                REG2 = fabsf(vel_y);
+                REG3 = fabsf(pos_y);
+            }
+            
+            Display_Write(1, REG1, dsky_PROG);
+            Display_Write(2, REG2, dsky_VERB);
+            Display_Write(3, REG3, dsky_NOUN);
+        } 
 
         // DSKY READ KEYBOARD
         key = Keyboard_Read();
@@ -171,41 +190,88 @@ int main(void) {
         */
 
         if (key == 0x0A) { // CLR (*)
-            dsky_buffer = 0;
+            switch (dsky_state) {                
+                case 1: // PROG
+                    dsky_PROG = 0;
+                    break;
+                
+                case 2: // VERB
+                    dsky_VERB = 0;
+                    break;
+                
+                case 3: // NOUN
+                    dsky_NOUN = 0;
+                    break;
+                
+                default:
+                    break;
+            }
             continue;
         }
 
         if (key == 0x0B) { // ENTER (#)
-            if (dsky_state == 0) continue;
+            switch (dsky_state) {
+                case 0:
+                    continue;
+                
+                case 1:
+                    PROG = dsky_PROG;
+                    break;
+                
+                case 2:
+                    VERB = dsky_VERB;
+                    break;
+                
+                case 3:
+                    NOUN = dsky_NOUN;
+                    break;
+                
+                default:
+                    break;
+            }
 
-            if (dsky_state == 1) PROG = dsky_buffer;
-            else if (dsky_state == 2) VERB = dsky_buffer;
-            else if (dsky_state == 3) NOUN = dsky_buffer;
-
-            dsky_buffer = 0;
             dsky_state = 0;
-            
             continue;
         }
 
         if (key == 0x0C) { // PROG
+            dsky_PROG = 0;
             dsky_state = 1;
             continue;
         }
 
         if (key == 0x0D) { // VERB
+            dsky_VERB = 0;
             dsky_state = 2;
             continue;
         }
 
         if (key == 0x0E) { // NOUN
+            dsky_NOUN = 0;
             dsky_state = 3;
             continue;
         }
      
-        if (dsky_state != 0) { // 0 - 9
-            dsky_buffer *= 10;
-            dsky_buffer += key;
+        if (dsky_state != 0) { // DSKY: edditing | KEY: 0 - 9
+            switch (dsky_state) {                
+                case 1: // PROG
+                    dsky_PROG *= 10;
+                    dsky_PROG += key;
+                    break;
+                
+                case 2: // VERB
+                    dsky_VERB *= 10;
+                    dsky_VERB += key;
+                    break;
+                
+                case 3: // NOUN
+                    dsky_NOUN *= 10;
+                    dsky_NOUN += key;
+                    break;
+                
+                default:
+                    break;
+            }
         }
     }
 }

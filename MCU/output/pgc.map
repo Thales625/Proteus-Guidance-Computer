@@ -43,19 +43,19 @@ C:   00000003  l_GSFINAL
 C:   00000003  l_GSINIT0                       
 C:   00000008  l_REG_BANK_0                    
 C:   00000008  s_REG_BANK_1                    
-C:   00000009  l_GSINIT                        
 C:   0000000A  l_GSINIT2                       
 C:   0000000B  l_OSEG                          
 C:   00000010  l_CONST                         
 C:   00000010  s_REG_BANK_2                    
+C:   00000012  l_GSINIT                        
 C:   00000018  s_BIT_BANK                      
 C:   00000018  s_REG_BANK_3                    
 C:   00000020  s_BSEG_BYTES                    
 C:   00000020  s__CODE                         
 C:   00000022  l_GSINIT3                       
-C:   00000028  l_XSEG                          
-C:   00000029  s_XISEG                         
 C:   0000002A  l_GSINIT4                       
+C:   00000038  l_XSEG                          
+C:   00000039  s_XISEG                         
 C:   0000004C  l_HOME                          
 ASxxxx Linker V03.00/V05.40 + sdld,  page 2.
 Hexadecimal  [32-Bits]
@@ -67,22 +67,22 @@ CABS                                00000000    00000000 =           0. bytes (A
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
 C:   0000004C  s_GSINIT0                       
-C:   0000004E  s_OSEG                          
 C:   0000004F  s_GSINIT1                       
 C:   0000004F  s_GSINIT2                       
+C:   00000051  s_OSEG                          
 C:   00000059  s_GSINIT3                       
-C:   00000059  s_SSEG                          
+C:   0000005C  s_SSEG                          
 C:   00000077  l_DSEG                          
 C:   0000007B  s_GSINIT4                       
+C:   000000A4  l_SSEG                          
 C:   000000A5  s_GSINIT                        
 C:   000000A5  s_GSINIT5                       
-C:   000000A7  l_SSEG                          
-C:   000000AE  s_GSFINAL                       
-C:   000000B1  s_CSEG                          
+C:   000000B7  s_GSFINAL                       
+C:   000000BA  s_CSEG                          
 C:   00000100  l_IRAM                          
-C:   00001A4A  l_CSEG                          
-C:   00001AFB  s_CONST                         
-C:   00001B0B  s_XINIT                         
+C:   00001B9B  l_CSEG                          
+C:   00001C55  s_CONST                         
+C:   00001C65  s_XINIT                         
 
 ASxxxx Linker V03.00/V05.40 + sdld,  page 3.
 Hexadecimal  [32-Bits]
@@ -273,53 +273,56 @@ DSEG                                00000000    00000077 =         119. bytes (R
      00000021  _MAX7219_Write_PARM_2              pgc
      00000022  _Display_Write_PARM_2              pgc
      00000026  _Display_Write_PARM_3              pgc
-     0000002B  _throttle                          pgc
-     0000002F  _gimbal                            pgc
-     00000033  _PROG                              pgc
-     00000034  _VERB                              pgc
-     00000035  _NOUN                              pgc
+     0000002B  _PROG                              pgc
+     0000002C  _VERB                              pgc
+     0000002D  _NOUN                              pgc
+     0000002E  _throttle                          pgc
+     00000032  _gimbal                            pgc
      00000036  _a0_x                              pgc
      0000003A  _a0_y                              pgc
      0000003E  _t_go                              pgc
-     00000042  _dsky_buffer                       pgc
+     00000042  _dsky_key_pressed                  pgc
      00000043  _dsky_state                        pgc
-     00000044  _dsky_key_pressed                  pgc
+     00000044  _dsky_PROG                         pgc
+     00000045  _dsky_VERB                         pgc
+     00000046  _dsky_NOUN                         pgc
+     00000047  _led_state                         pgc
 
 ASxxxx Linker V03.00/V05.40 + sdld,  page 9.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-OSEG                                0000004E    0000000B =          11. bytes (REL,OVR)
+OSEG                                00000051    0000000B =          11. bytes (REL,OVR)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     0000004E  __divsint_PARM_2                   _divuint
-     0000004E  __divslong_PARM_2                  _divulong
-     0000004E  __divuint_PARM_2                   _divuint
-     0000004E  __divulong_PARM_2                  _divulong
-     0000004E  __gptrput_PARM_2                   _gptrput
-     0000004E  __modslong_PARM_2                  _modulong
-     0000004E  __modulong_PARM_2                  _modulong
-     0000004E  _frexpf_PARM_2                     frexpf
-     0000004E  _ldexpf_PARM_2                     ldexpf
+     00000051  __divsint_PARM_2                   _divuint
+     00000051  __divslong_PARM_2                  _divulong
+     00000051  __divuint_PARM_2                   _divuint
+     00000051  __divulong_PARM_2                  _divulong
+     00000051  __gptrput_PARM_2                   _gptrput
+     00000051  __modslong_PARM_2                  _modulong
+     00000051  __modulong_PARM_2                  _modulong
+     00000051  _frexpf_PARM_2                     frexpf
+     00000051  _ldexpf_PARM_2                     ldexpf
 ASxxxx Linker V03.00/V05.40 + sdld,  page 10.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-SSEG                                00000059    000000A7 =         167. bytes (REL,OVR)
+SSEG                                0000005C    000000A4 =         164. bytes (REL,OVR)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     00000059  __start__stack                     pgc
+     0000005C  __start__stack                     pgc
 
 ASxxxx Linker V03.00/V05.40 + sdld,  page 11.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-XSEG                                00000001    00000028 =          40. bytes (REL,CON,XDATA)
+XSEG                                00000001    00000038 =          56. bytes (REL,CON,XDATA)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -333,6 +336,10 @@ D:   00000019  _av_accel                          pgc
 D:   0000001D  _av_accel_ang                      pgc
 D:   00000021  _ut                                pgc
 D:   00000025  _gravity_y                         pgc
+D:   00000029  _fuel_level                        pgc
+D:   0000002D  _REG1                              pgc
+D:   00000031  _REG2                              pgc
+D:   00000035  _REG3                              pgc
 
 ASxxxx Linker V03.00/V05.40 + sdld,  page 12.
 Hexadecimal  [32-Bits]
@@ -397,7 +404,7 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-GSINIT                              000000A5    00000009 =           9. bytes (REL,CON,CODE)
+GSINIT                              000000A5    00000012 =          18. bytes (REL,CON,CODE)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -406,7 +413,7 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-GSFINAL                             000000AE    00000003 =           3. bytes (REL,CON,CODE)
+GSFINAL                             000000B7    00000003 =           3. bytes (REL,CON,CODE)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -415,67 +422,66 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-CSEG                                000000B1    00001A4A =        6730. bytes (REL,CON,CODE)
+CSEG                                000000BA    00001B9B =        7067. bytes (REL,CON,CODE)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-C:   000000B1  _Keyboard_Read                     pgc
-C:   00000180  _MAX7219_SPI_Write_Byte            pgc
-C:   00000194  _MAX7219_Select                    pgc
-C:   0000019D  _MAX7219_Write                     pgc
-C:   000001AF  _Display_Write                     pgc
-C:   00000284  _Serial_SendByte                   pgc
-C:   0000028D  _Serial_SendFloat                  pgc
-C:   000002AD  _Serial_ReadByte                   pgc
-C:   000002B6  _Serial_ReadFloat                  pgc
-C:   000002E5  _Delay_polling                     pgc
-C:   0000030B  _Delay_5us                         pgc
-C:   00000310  _main                              pgc
-C:   00000AA0  ___fssub                           _fssub
-C:   00000AAB  __modulong                         _modulong
-C:   00000B2E  ___fsmul                           _fsmul
-C:   00000BD1  __divulong                         _divulong
-C:   00000C36  fsgetargs                          _fsget2args
-C:   00000C64  fs_normalize_a                     _fsnormalize
-C:   00000C97  ___fs2slong                        _fs2slong
-C:   00000CF2  _sqrtf                             sqrtf
-C:   00000F41  fsgetarg                           _fsget1arg
-C:   00000F53  ___fslt                            _fslt
-C:   00000F83  _atan2f                            atan2f
-C:   0000118D  __divuint                          _divuint
-C:   000011B6  ___fsadd                           _fsadd
-C:   000011B9  fsadd_direct_entry                 _fsadd
-C:   0000120F  _fabsf                             fabsf
-C:   00001268  __modslong                         _modslong
-C:   000012B7  _ldexpf                            ldexpf
-C:   0000134B  fs_compare_uint32                  _fscmp
-C:   00001369  fs_check_negative_zeros            _fscmp
-C:   00001394  __divslong                         _divslong
-C:   000013E6  ___sint2fs                         _sint2fs
-C:   000013F3  _atanf                             atanf
-C:   00001862  _frexpf                            frexpf
-C:   000018F7  fs_round_and_return                _fsreturnval
-C:   0000190F  fs_zerocheck_return                _fsreturnval
-C:   00001918  fs_return_zero                     _fsreturnval
-C:   00001920  fs_direct_return                   _fsreturnval
-C:   0000192E  fs_return_inf                      _fsreturnval
-C:   0000193B  fs_return_nan                      _fsreturnval
-C:   00001946  fs_swap_a_b                        _fsswapargs
-C:   00001960  ___fsdiv                           _fsdiv
-C:   00001A23  ___slong2fs                        _slong2fs
-C:   00001A2C  slong2fs_doit                      _slong2fs
-C:   00001A50  __divsint                          _divsint
-C:   00001A88  fs_rshift_a                        _fsrshift
-C:   00001ACB  ___fseq                            _fseq
-C:   00001ADC  __gptrput                          _gptrput
-C:   00001AF7  ___sdcc_external_startup           _startup
+C:   000000BA  _Keyboard_Read                     pgc
+C:   00000189  _MAX7219_WriteByte                 pgc
+C:   0000019B  _MAX7219_Select                    pgc
+C:   000001A4  _MAX7219_Write                     pgc
+C:   000001B6  _Display_Write                     pgc
+C:   0000028B  _LED_WriteData                     pgc
+C:   0000029D  _Serial_SendByte                   pgc
+C:   000002A6  _Serial_SendFloat                  pgc
+C:   000002C6  _Serial_ReadByte                   pgc
+C:   000002CF  _Serial_ReadFloat                  pgc
+C:   000002FE  _main                              pgc
+C:   00000BFA  ___fssub                           _fssub
+C:   00000C05  __modulong                         _modulong
+C:   00000C88  ___fsmul                           _fsmul
+C:   00000D2B  __divulong                         _divulong
+C:   00000D90  fsgetargs                          _fsget2args
+C:   00000DBE  fs_normalize_a                     _fsnormalize
+C:   00000DF1  ___fs2slong                        _fs2slong
+C:   00000E4C  _sqrtf                             sqrtf
+C:   0000109B  fsgetarg                           _fsget1arg
+C:   000010AD  ___fslt                            _fslt
+C:   000010DD  _atan2f                            atan2f
+C:   000012E7  __divuint                          _divuint
+C:   00001310  ___fsadd                           _fsadd
+C:   00001313  fsadd_direct_entry                 _fsadd
+C:   00001369  _fabsf                             fabsf
+C:   000013C2  __modslong                         _modslong
+C:   00001411  _ldexpf                            ldexpf
+C:   000014A5  fs_compare_uint32                  _fscmp
+C:   000014C3  fs_check_negative_zeros            _fscmp
+C:   000014EE  __divslong                         _divslong
+C:   00001540  ___sint2fs                         _sint2fs
+C:   0000154D  _atanf                             atanf
+C:   000019BC  _frexpf                            frexpf
+C:   00001A51  fs_round_and_return                _fsreturnval
+C:   00001A69  fs_zerocheck_return                _fsreturnval
+C:   00001A72  fs_return_zero                     _fsreturnval
+C:   00001A7A  fs_direct_return                   _fsreturnval
+C:   00001A88  fs_return_inf                      _fsreturnval
+C:   00001A95  fs_return_nan                      _fsreturnval
+C:   00001AA0  fs_swap_a_b                        _fsswapargs
+C:   00001ABA  ___fsdiv                           _fsdiv
+C:   00001B7D  ___slong2fs                        _slong2fs
+C:   00001B86  slong2fs_doit                      _slong2fs
+C:   00001BAA  __divsint                          _divsint
+C:   00001BE2  fs_rshift_a                        _fsrshift
+C:   00001C25  ___fseq                            _fseq
+C:   00001C36  __gptrput                          _gptrput
+C:   00001C51  ___sdcc_external_startup           _startup
 
 ASxxxx Linker V03.00/V05.40 + sdld,  page 20.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-CONST                               00001AFB    00000010 =          16. bytes (REL,CON,CODE)
+CONST                               00001C55    00000010 =          16. bytes (REL,CON,CODE)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------

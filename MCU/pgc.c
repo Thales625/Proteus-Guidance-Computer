@@ -234,7 +234,7 @@ int main(void) {
         if (counter == 5) {
             counter = 0;
 
-            // PULL DOWN REGS
+            // RESET REGS
             REG1 = REG2 = REG3 = 0;
 
             if (VERB == 16) {

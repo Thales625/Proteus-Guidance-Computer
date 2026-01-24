@@ -222,13 +222,6 @@ int main(void) {
     while (1) {
         read_environment();
 
-        // DEBUG
-        {
-            Serial_SendByte(0xFE);
-            Serial_SendByte(situation);
-        }
-        // END DEBUG
-
         P64();
 
         // SEND CONTROL PACKAGE  

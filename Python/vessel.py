@@ -84,6 +84,8 @@ class Vessel:
                                         data_to_send = self.ut
                                     elif i==3: # gravity y
                                         data_to_send = celestial_body.gravity[1]
+                                    elif i==4: # fuel level
+                                        data_to_send = (self.fuel_mass / self.fuel_capacity) * 100
                                     else:
                                         print(f"ERROR: MCU request invalid noun({noun})")
                                 

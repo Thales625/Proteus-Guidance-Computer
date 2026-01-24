@@ -21,7 +21,7 @@ __xdata float fuel_level;
 byte_t PROG, VERB, NOUN;
 float throttle, gimbal;
 float a0_x, a0_y;
-float t_go;
+float t_go, t_go0;
 
 // DKSY
 bool dsky_key_pressed = false;
@@ -31,13 +31,144 @@ __xdata float REG1, REG2, REG3;
 
 byte_t led_state = 0b1111;
 
-inline void compute_a0(void) {
-    // 4th Order
+void P64(void) {
+    t_go = t_go0 - ut;
+
+    if (t_go < 3.0f) t_go = 3.0f;
+
+    // compute target acceleration | 4th Order
     float _a = -12.0f / (t_go * t_go);
     float _b = -6.0f / t_go;
 
     a0_x = _a * pos_x + _b * vel_x;
     a0_y = _a * pos_y + _b * vel_y - gravity_y;
+
+    // throttle control
+    throttle = sqrtf(a0_x * a0_x + a0_y * a0_y) / av_accel;
+
+    // gimbal control
+    if (throttle != 0) {
+        // normalizing angle
+        float delta_angle = angle_from_vec2(a0_x, a0_y) - angle;
+
+        if (delta_angle > 3.14159265f) {
+            delta_angle -= 6.2831853f;
+        } else if (delta_angle < -3.14159265f) {
+            delta_angle += 6.2831853f;
+        }
+
+        // gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / (av_accel_ang * throttle); // considering without RCS
+
+        gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / av_accel_ang;
+    } else {
+        gimbal = 0.0f;
+    }
+}
+
+void DSKY_Keyboard(void) {
+    byte_t key = Keyboard_Read();
+
+    if (key == 0xFF) {
+        dsky_key_pressed = false;
+        return;
+    }
+
+    if (dsky_key_pressed) return;
+
+    dsky_key_pressed = true;
+
+    /*
+    DSKY States
+    0 - Standby
+    1 - editting PROG
+    2 - editting VERB
+    3 - editting NOUN
+    */
+
+    if (key == 0x0A) { // CLR (*)
+        switch (dsky_state) {                
+            case 1: // PROG
+                dsky_PROG = 0;
+                break;
+            
+            case 2: // VERB
+                dsky_VERB = 0;
+                break;
+            
+            case 3: // NOUN
+                dsky_NOUN = 0;
+                break;
+            
+            default:
+                break;
+        }
+        return;
+    }
+
+    if (key == 0x0B) { // ENTER (#)
+        switch (dsky_state) {
+            case 0:
+                return;
+            
+            case 1:
+                PROG = dsky_PROG;
+                break;
+            
+            case 2:
+                VERB = dsky_VERB;
+                break;
+            
+            case 3:
+                NOUN = dsky_NOUN;
+                break;
+            
+            default:
+                break;
+        }
+
+        dsky_state = 0;
+        return;
+    }
+
+    if (key == 0x0C) { // PROG
+        dsky_PROG = 0;
+        dsky_state = 1;
+        return;
+    }
+
+    if (key == 0x0D) { // VERB
+        dsky_VERB = 0;
+        dsky_state = 2;
+        return;
+    }
+
+    if (key == 0x0E) { // NOUN
+        dsky_NOUN = 0;
+        dsky_state = 3;
+        return;
+    }
+ 
+    if (dsky_state != 0) { // DSKY: edditing | KEY: 0 - 9
+        switch (dsky_state) {                
+            case 1: // PROG
+                dsky_PROG *= 10;
+                dsky_PROG += key;
+                break;
+            
+            case 2: // VERB
+                dsky_VERB *= 10;
+                dsky_VERB += key;
+                break;
+            
+            case 3: // NOUN
+                dsky_NOUN *= 10;
+                dsky_NOUN += key;
+                break;
+            
+            default:
+                break;
+        }
+    }
 }
 
 inline void read_environment(void) {
@@ -55,9 +186,9 @@ inline void read_environment(void) {
 }
 
 int main(void) {    
-    byte_t key;
-    float t_go0 = 30.0f;
     byte_t counter = 0;
+
+    t_go0 = 30.0f;
 
     // RESET XDATA
     REG1 = 0;
@@ -87,9 +218,8 @@ int main(void) {
     }
 
     { // CONFIG 7SEG DISPLAY CONTROLLERS
-        // using the var <key> to save memory
-        for (key=1; key<=3; key++) {
-            MAX7219_Select(key);
+        for (byte_t i=1; i<=3; i++) {
+            MAX7219_Select(i);
             MAX7219_Init();
         }
     }
@@ -97,33 +227,7 @@ int main(void) {
     while (1) {
         read_environment();
 
-        t_go = t_go0 - ut;
-
-        if (t_go < 3.0f) t_go = 3.0f;
-
-        // compute target acceleration
-        compute_a0();
-
-        // throttle control
-        throttle = sqrtf(a0_x * a0_x + a0_y * a0_y) / av_accel;
-
-        // gimbal control
-        if (throttle != 0) {
-            // normalizing angle
-            float delta_angle = angle_from_vec2(a0_x, a0_y) - angle;
-
-            if (delta_angle > 3.14159265f) {
-                delta_angle -= 6.2831853f;
-            } else if (delta_angle < -3.14159265f) {
-                delta_angle += 6.2831853f;
-            }
-
-            // gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / (av_accel_ang * throttle); // considering without RCS
-
-            gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / av_accel_ang;
-        } else {
-            gimbal = 0.0f;
-        }
+        P64();
 
         // SEND CONTROL PACKAGE  
         Serial_SendByte(0x21); // send package
@@ -135,16 +239,8 @@ int main(void) {
         if (counter == 5) {
             counter = 0;
 
+            // PULL DOWN REGS
             REG1 = REG2 = REG3 = 0;
-
-            if (dsky_state != 0) { // editting
-                led_state &= 0b1110;
-            } else {
-                led_state |= 0b0001;
-            }
-
-
-            LED_WriteData(led_state);
 
             if (VERB == 16) {
                 switch (NOUN) {
@@ -167,111 +263,18 @@ int main(void) {
             Display_Write(1, REG1, dsky_PROG);
             Display_Write(2, REG2, dsky_VERB);
             Display_Write(3, REG3, dsky_NOUN);
-        } 
+        }
 
         // DSKY READ KEYBOARD
-        key = Keyboard_Read();
+        DSKY_Keyboard();
 
-        if (key == 0xFF) {
-            dsky_key_pressed = false;
-            continue;
-        }
+        // PULL OFF LED STATE
+        led_state |= 0b1111;
 
-        if (dsky_key_pressed) continue;
-
-        dsky_key_pressed = true;
-
-        /*
-        DSKY States
-        0 - Standby
-        1 - editting PROG
-        2 - editting VERB
-        3 - editting NOUN
-        */
-
-        if (key == 0x0A) { // CLR (*)
-            switch (dsky_state) {                
-                case 1: // PROG
-                    dsky_PROG = 0;
-                    break;
-                
-                case 2: // VERB
-                    dsky_VERB = 0;
-                    break;
-                
-                case 3: // NOUN
-                    dsky_NOUN = 0;
-                    break;
-                
-                default:
-                    break;
-            }
-            continue;
-        }
-
-        if (key == 0x0B) { // ENTER (#)
-            switch (dsky_state) {
-                case 0:
-                    continue;
-                
-                case 1:
-                    PROG = dsky_PROG;
-                    break;
-                
-                case 2:
-                    VERB = dsky_VERB;
-                    break;
-                
-                case 3:
-                    NOUN = dsky_NOUN;
-                    break;
-                
-                default:
-                    break;
-            }
-
-            dsky_state = 0;
-            continue;
-        }
-
-        if (key == 0x0C) { // PROG
-            dsky_PROG = 0;
-            dsky_state = 1;
-            continue;
-        }
-
-        if (key == 0x0D) { // VERB
-            dsky_VERB = 0;
-            dsky_state = 2;
-            continue;
-        }
-
-        if (key == 0x0E) { // NOUN
-            dsky_NOUN = 0;
-            dsky_state = 3;
-            continue;
-        }
-     
-        if (dsky_state != 0) { // DSKY: edditing | KEY: 0 - 9
-            switch (dsky_state) {                
-                case 1: // PROG
-                    dsky_PROG *= 10;
-                    dsky_PROG += key;
-                    break;
-                
-                case 2: // VERB
-                    dsky_VERB *= 10;
-                    dsky_VERB += key;
-                    break;
-                
-                case 3: // NOUN
-                    dsky_NOUN *= 10;
-                    dsky_NOUN += key;
-                    break;
-                
-                default:
-                    break;
-            }
-        }
+        // UPDATE LED STATE
+        if (dsky_key_pressed) led_state &= 0b1110; // key led on
+        if (dsky_state != 0) led_state &= 0b1101; // edit led on
+        
+        LED_WriteData(led_state);
     }
 }

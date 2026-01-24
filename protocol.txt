@@ -19,6 +19,7 @@ VERBs:
         7 -> av. ang. acceleration (float32)
         8 -> ut (float32)
         9 -> gravity (float32)
+        10-> fuel level (float32)
 
     1 -> Send data
         NOUNs:

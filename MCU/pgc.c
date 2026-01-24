@@ -9,13 +9,13 @@
 #include "utils.h"
 
 // STATES
+__xdata float ut;
 __xdata float pos_x, pos_y;
 __xdata float vel_x, vel_y;
 __xdata float angle, ang_vel;
 __xdata float av_accel, av_accel_ang;
-__xdata float ut;
-__xdata float gravity_y;
-__xdata float fuel_level;
+byte_t situation;
+float gravity_y;
 
 // CONTROL
 byte_t PROG, VERB, NOUN;
@@ -27,7 +27,7 @@ float t_go, t_go0;
 bool dsky_key_pressed = false;
 byte_t dsky_state = 0;
 byte_t dsky_PROG = 0, dsky_VERB = 0, dsky_NOUN = 0;
-__xdata float REG1, REG2, REG3;
+float REG1, REG2, REG3;
 
 byte_t led_state = 0b1111;
 
@@ -58,7 +58,6 @@ void P64(void) {
         }
 
         // gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / (av_accel_ang * throttle); // considering without RCS
-
         gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / av_accel_ang;
     } else {
         gimbal = 0.0f;
@@ -183,17 +182,13 @@ inline void read_environment(void) {
     ang_vel = Serial_ReadFloat();
     av_accel = Serial_ReadFloat();
     av_accel_ang = Serial_ReadFloat();
+    situation = Serial_ReadByte();
 }
 
 int main(void) {    
     byte_t counter = 0;
 
     t_go0 = 30.0f;
-
-    // RESET XDATA
-    REG1 = 0;
-    REG2 = 0;
-    REG3 = 0;
 
     { // CONFIG SERIAL
         Serial_ConfigTimer(0xFD); // 9.600 bps | 11.0592 MHz
@@ -226,6 +221,13 @@ int main(void) {
 
     while (1) {
         read_environment();
+
+        // DEBUG
+        {
+            Serial_SendByte(0xFE);
+            Serial_SendByte(situation);
+        }
+        // END DEBUG
 
         P64();
 

@@ -3,6 +3,7 @@ import numpy as np
 from serial import Serial
 from threading import Thread, Lock
 import struct
+from enum import IntEnum
 
 from control import Control
 from reference_frame import ReferenceFrame
@@ -10,11 +11,18 @@ from shapes import Polygon
 from solver import RK4
 
 from utils import vec2_from_angle, rotate_vec2
-    
+
+class Situation(IntEnum):
+    FLYING = 0
+    LANDED = 1
+    SPLASHED = 2
+  
 def get_torque(force, position): return force[0] * position[1] - force[1] * position[0]
 
 class Vessel:
     def __init__(self, position, velocity, dry_mass, fuel_mass, celestial_body, moi=None, size=np.array([20., 80.]), color="gray", port="/dev/tnt1", baud_rate=9600) -> None:
+        self.situation = Situation.FLYING
+
         self.state = np.array([
             *position, # position
             *velocity, # velocity
@@ -69,7 +77,7 @@ class Vessel:
                         # print(f"\n-----====| RECEIVE [{hex(data)}] VERB: {verb} | NOUN: {noun} |====-----")
 
                         if verb == 0: # MCU request data
-                            data_to_send = 0.0
+                            data_to_send = None
 
                             with self.state_lock:
                                 if 0 <= noun < len(self.state):
@@ -86,10 +94,13 @@ class Vessel:
                                         data_to_send = celestial_body.gravity[1]
                                     elif i==4: # fuel level
                                         data_to_send = (self.fuel_mass / self.fuel_capacity) * 100
+                                    elif i==5: # situation
+                                        data_to_send = self.situation.value
                                     else:
                                         print(f"ERROR: MCU request invalid noun({noun})")
-                                
-                            self.serial_port.write(struct.pack('<f', data_to_send))
+
+                            self.SerialWrite(data_to_send)
+
                             continue
 
                         if verb == 1: # MCU send data
@@ -111,8 +122,8 @@ class Vessel:
                         if verb == 2: # MCU request/send PACKAGE
                             if noun == 0: # request
                                 with self.control_lock:
-                                    for data_to_send in [self.ut] + list(self.state) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia]:
-                                        self.serial_port.write(struct.pack('<f', data_to_send))
+                                    for data_to_send in [self.ut] + list(self.state) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia, self.situation.value]:
+                                        self.SerialWrite(data_to_send)
                                 continue
 
                             if noun == 1: # send
@@ -191,6 +202,12 @@ class Vessel:
             ])
 
         self.solver = RK4(dSdt)
+    
+    def SerialWrite(self, value):
+        if isinstance(value, float):
+            self.serial_port.write(struct.pack('<f', value))
+        elif isinstance(value, int):
+            self.serial_port.write(bytes([value]))
 
     def check_ground_collision(self):
         # with self.state_lock:

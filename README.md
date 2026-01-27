@@ -2,7 +2,7 @@
 
 **An 8-bit control system for rocket landing simulation.**
 
-The **Proteus Guidance Computer (PGC)** is a Hardware-in-the-Loop (HIL) project inspired by the legendary **Apollo Guidance Computer (AGC)**. It explores the challenge of performing real-time Guidance, Navigation, and Control (GNC) tasks using the constraints of a vintage architecture.
+The **Proteus Guidance Computer (PGC)** is project inspired by the legendary **Apollo Guidance Computer (AGC)**. It explores the challenge of performing real-time Guidance, Navigation, and Control (GNC) tasks using the constraints of a vintage architecture.
 
 The goal is to autonomously land a rocket model by delegating the control logic to an emulated **8051 microcontroller**, while the physics and environmental simulation run externally on a custom **Python engine**.
 

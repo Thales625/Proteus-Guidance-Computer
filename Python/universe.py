@@ -1,11 +1,19 @@
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib.animation import FuncAnimation
+
+import numpy as np
 
 class Universe:
     def __init__(self, celestial_body) -> None:
         self.vessels = []
         self.parts = []
         self._shapes = []
+
+        self.cam_zoom = 10.
+        self.cam_min_zoom = 0.2
+        self.cam_max_zoom = 40.
+        self.cam_position = np.array([0., 0.])
+        self.cam_follow_rocket = True
 
         self.celestial_body = celestial_body
 
@@ -46,45 +54,11 @@ class Universe:
         return [shape.artist for shape in self._shapes]
 
 
-    def SimulateGIF(self, setup_func, loop_func, camera_pos, target_spot, duration, D=20., dt=0.1, path="simulation.gif"):
+    def Simulate(self, setup_func, loop_func, dt=0.01):
         fig, ax = plt.subplots()
 
-        self.UpdateShapes()
-        self.SetupShapes(ax)
-        artists = self.GetArtists()
-
-        setup_func()
-
-        def update(frame):
-            ut = frame*dt
-
-            print(f"{100*ut/duration:.0f}%")
-
-            loop_func(ut)
-
-            self.PhysicsLoop(dt, ut)
-            self.RenderLoop()
-
-            return artists
-
-        ani = FuncAnimation(fig, update, frames=int(duration/dt), interval=dt*1000, blit=True, cache_frame_data=False)
-
-        ax.set_xlim(camera_pos[0]-D, camera_pos[0]+D)
-        ax.set_ylim(camera_pos[1]-D, camera_pos[1]+D)
-        ax.set_aspect("equal", adjustable="datalim")
-
-        ax.plot(*target_spot, "x", color="red", label="Target landing")
-
-        ax.plot(*self.celestial_body.curve(), c="gray")
-        plt.title("PDG Simulation")
-        plt.grid()
-        plt.legend()
-        plt.tight_layout()
-
-        ani.save(path, writer=PillowWriter(fps=int(1/dt)))
-
-    def Simulate(self, setup_func, loop_func, camera_pos, D=20., dt=0.01):
-        fig, ax = plt.subplots()
+        # ax.set_aspect("equal", adjustable="datalim")
+        ax.set_aspect("equal")
 
         self.UpdateShapes()
         self.SetupShapes(ax)
@@ -92,26 +66,50 @@ class Universe:
 
         setup_func(ax)
 
-
         def update(frame):
             ut = frame*dt
 
             self.PhysicsLoop(dt, ut)
             self.RenderLoop()
 
+            # camera follows rocket
+            if self.cam_follow_rocket:
+                self.cam_position = 0.5 * self.cam_position + 0.5 * self.vessels[0].position
+                
+                x, y = self.cam_position
+
+                ax.set_xlim(x - self.cam_zoom, x + self.cam_zoom)
+                ax.set_ylim(y - self.cam_zoom, y + self.cam_zoom)
+
             return artists + loop_func(ut)
 
-        ani = FuncAnimation(fig, update, interval=dt*1000, blit=True, cache_frame_data=False)
+        ax.plot(*self.celestial_body.curve(-100, 100), c="gray") # surface
 
-        ax.set_xlim(camera_pos[0]-D, camera_pos[0]+D)
-        ax.set_ylim(camera_pos[1]-D, camera_pos[1]+D)
-        ax.set_aspect("equal", adjustable="datalim")
+        def on_key(event):
+            if event.key == "+":
+                self.cam_zoom *= 1.1
+            elif event.key == "-":
+                self.cam_zoom /= 1.1
 
-        ax.plot((0, 0), "x", color="red", label="Target landing")
+            elif event.key == "c":
+                self.cam_follow_rocket = not self.cam_follow_rocket
 
-        ax.plot(*self.celestial_body.curve(), c="gray") # surface
+            self.cam_zoom = np.clip(self.cam_zoom, self.cam_min_zoom, self.cam_max_zoom)
 
-        plt.title("PDG Simulation")
+        def on_scroll(event):
+            if event.button == "up":
+                self.cam_zoom *= 1.1
+            elif event.button == "down":
+                self.cam_zoom /= 1.1
+
+            self.cam_zoom = np.clip(self.cam_zoom, self.cam_min_zoom, self.cam_max_zoom)
+
+        fig.canvas.mpl_connect("key_press_event", on_key)
+        fig.canvas.mpl_connect("scroll_event", on_scroll)
+
+        ani = FuncAnimation(fig, update, interval=dt*1000, blit=False, cache_frame_data=False)
+
+        plt.title("Simulation")
         plt.grid()
         plt.tight_layout()
 

@@ -1,28 +1,19 @@
 import numpy as np
 from scipy.optimize import minimize_scalar
 
-class CelestialBody:
-    def __init__(self, terrain_fun, gravity:float, offset=np.array([0., 0.])):
-        self.terrain = terrain_fun # y(x)
-        self.gravity = np.array([0., -gravity])
-        self.offset = offset
-    
-    def get_point(self, x):
-        # x -= self.offset[0]
-        # return x, self.terrain(x)-self.offset[1]
-        return x, self.terrain(x)
+from terrain import ProceduralTerrain
 
-    def curve(self):
-        x_arr = np.arange(self.terrain.min_x, self.terrain.max_x, 1.)
-        return self.get_point(x_arr)
+class CelestialBody:
+    def __init__(self, gravity:float, terrain_seed=1, terrain_harmonics=5):
+        self.gravity = np.array([0., -gravity])
+        self.terrain = ProceduralTerrain(terrain_seed, terrain_harmonics)
+
+    def curve(self, min_x, max_x):
+        x_arr = np.arange(min_x, max_x, 1.)
+        return x_arr, self.terrain(x_arr)
 
     def get_flat_spot(self, x_min, x_max):
-        def slope_cost(x):
-            dx = 0.1
-            y1 = self.terrain(x - dx)
-            y2 = self.terrain(x + dx)
-            slope = (y2 - y1) / (2*dx)
-            return np.abs(slope)
+        def slope_cost(x): return np.abs(self.terrain.get_deriv(x))
 
         res = minimize_scalar(slope_cost, bounds=(x_min, x_max), method='bounded')
         x_best = res.x

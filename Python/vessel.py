@@ -12,6 +12,9 @@ from solver import RK4
 
 from utils import vec2_from_angle, rotate_vec2
 
+RESTITUION = 1.2
+FRICTION_COEF = 0.9
+
 class Situation(IntEnum):
     FLYING = 0
     LANDED = 1
@@ -179,18 +182,6 @@ class Vessel:
             
             # linear
             accel_x, accel_y = self.force / self.mass + self.body.gravity
-
-            # DEBUG freeze pos
-            '''
-            return np.array([
-                0,        # dx/dt
-                0,        # dy/dt
-                accel_x,   # dvx/dt
-                accel_y,   # dvy/dt
-                omega,     # dθ/dt
-                accel_ang  # dω/dt
-            ])
-            '''
             
             return np.array([
                 vx,        # dx/dt
@@ -210,24 +201,25 @@ class Vessel:
             self.serial_port.write(bytes([value]))
 
     def check_ground_collision(self):
-        # with self.state_lock:
-            # vel = self.velocity
-
         vertices = list(self.shape.local_vertices)
         # for e in self.engines: vertices += list(e.shape.local_vertices)
         # for e in self.rcs_engines: vertices += list(e.shape.local_vertices)
-        # for p in self.parts: vertices += list(p.shape.local_vertices)
+        for p in self.parts: vertices += list(p.shape.local_vertices)
 
         for local_vertex in vertices:
             vertex = self.reference_frame.transform_position_to_global(local_vertex)
-            # print(vertex, end=" ")
+            ground_height = self.body.terrain(vertex[0])
 
-            # if vertex[1] < self.body.get_terrain(vertex[0]):
-            if vertex[1] < self.body.get_point(vertex[0])[1]:
-                return True, vertex
-        # print()
-                
-        return False, None
+            if vertex[1] <= ground_height:
+                dy = self.body.terrain.get_deriv(vertex[0])
+                tangent = np.array([1, dy])*(1/np.sqrt(1+dy**2))
+
+                yield {
+                    "normal": np.array([-tangent[1], tangent[0]]),
+                    "tangent": tangent,
+                    "point_global": vertex,
+                    "ground_height": ground_height
+                }
 
     @property
     def position(self):
@@ -281,13 +273,36 @@ class Vessel:
         rcs.reference_frame.translation = self.size*np.array([.5 if left else -.5, 0.]) + np.array([0., y_offset])
 
         rcs.reference_frame.rotation += np.radians(90.)
-        if (left): rcs.reference_frame.rotation += np.pi
+        if left: rcs.reference_frame.rotation += np.pi
 
         rcs.direction = vec2_from_angle(rcs.reference_frame.rotation)
 
         self.rcs_engines.append(rcs)
 
         self.update_forces()
+
+    def add_impulse_at(self, impulse, point_global):
+        with self.state_lock:
+            # linear velocity
+            delta_v = impulse / self.mass
+            self.state[2] += delta_v[0] # vx
+            self.state[3] += delta_v[1] # vy
+            
+        # torque
+        r = point_global - self.position
+        torque_impulse = r[0] * impulse[1] - r[1] * impulse[0]
+
+        with self.state_lock: self.state[5] += torque_impulse / self.moment_of_inertia
+
+    def get_velocity_at(self, point_global):
+        v_com = self.velocity
+        omega = self.angular_velocity
+        r = point_global - self.position
+
+        # tangencial velocity at point
+        v_tan = np.array([-omega * r[1], omega * r[0]])
+        
+        return v_com + v_tan
 
     def update_forces(self):
         self.available_thrust = 0.
@@ -350,21 +365,52 @@ class Vessel:
 
                 self.fuel_mass = 0
 
-        # print(f"Fuel mass: {self.fuel_mass:.2f}")
-
         # step ivp
         with self.state_lock: new_state = self.state.copy()
         new_state += self.solver.step(new_state, ut, dt)
         with self.state_lock: self.state = new_state.copy()
 
+        # check ground collision
+        hits = self.check_ground_collision()
+
+        for info in hits:
+
+            r_vec = info["point_global"] - self.position
+            point_vel = self.get_velocity_at(info["point_global"])
+            normal = info["normal"]
+            tangent = info["tangent"]
+
+            vel_normal = np.dot(point_vel, normal)
+            vel_tangent = np.dot(point_vel, tangent)
+
+            if vel_normal < 0.:
+                inv_mass = 1. / self.mass
+                inv_moi = 1. / self.moment_of_inertia
+                
+                # normal
+                r_cross_n = r_vec[0] * normal[1] - r_vec[1] * normal[0]
+                jn_mag = (-RESTITUION * vel_normal) / (inv_mass + inv_moi*r_cross_n**2)
+                impulse_n = jn_mag * normal
+                
+                # tangent
+                r_cross_t = r_vec[0] * tangent[1] - r_vec[1] * tangent[0]
+                jt_mag = -vel_tangent / (inv_mass + inv_moi*r_cross_t**2)
+
+                max_friction = jn_mag * FRICTION_COEF
+                jt_mag = np.clip(jt_mag, -max_friction, max_friction)
+  
+                impulse_t = jt_mag * tangent
+
+                self.add_impulse_at(impulse_n + impulse_t, info["point_global"])
+
+                # prevent ground stuck
+                penetration_depth = info["ground_height"] - info["point_global"][1]
+
+                self.position += (0.8*penetration_depth/normal[1]) * normal
+                    
         # update reference frame
         self.reference_frame.rotation = self.angle
         self.reference_frame.translation = self.position
-
-        # check ground collision
-        hit, info = self.check_ground_collision()
-
-        if hit: self.velocity = np.array([0.9*self.velocity[0], -0.9*self.velocity[1]])
 
 		# clamp
         self.angle = (self.angle + np.pi) % (2*np.pi) - np.pi

@@ -21,6 +21,8 @@ universe = Universe(celestial_body)
 
 ### VESSEL
 
+MAX_SAFE_IMPACT_ENERGY_GEARS = 10e3
+
 lunar_module = Vessel(
     position=np.array([11.0, 10.0]),
     velocity=np.array([0., -1.]),
@@ -96,6 +98,7 @@ lunar_module.parts.append(Part(
         np.array([w, h2]),
         np.array([-w, h2]),
     ], -angle),
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_GEARS,
     color=c,
     zorder=6,
     reference_frame=lunar_module.reference_frame
@@ -109,6 +112,7 @@ lunar_module.parts.append(Part(
         np.array([w, h2]),
         np.array([-w, h2]),
     ], angle),
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_GEARS,
     color=c,
     zorder=6,
     reference_frame=lunar_module.reference_frame

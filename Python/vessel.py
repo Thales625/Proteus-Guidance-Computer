@@ -1,18 +1,17 @@
 import numpy as np
 
-from serial import Serial
-from threading import Thread, Lock
-import struct
+from threading import Lock
 from enum import IntEnum
 
 from control import Control
 from reference_frame import ReferenceFrame
 from shapes import Polygon
 from solver import RK4
+from communication import Communication
 
 from utils import vec2_from_angle, rotate_vec2
 
-RESTITUION = 1.2
+RESTITUTION = 0.2
 FRICTION_COEF = 0.9
 
 class Situation(IntEnum):
@@ -50,107 +49,9 @@ class Vessel:
         self.body = celestial_body
 
         # Serial communication
-        self.serial_port = Serial(port, baud_rate)
-
         self.state_lock = Lock()
         self.control_lock = Lock()
-
-        def serial_reader(): # Thread function
-            print("Starting serial communication...")
-            while True:
-                try:
-                    if self.serial_port.in_waiting > 0:
-                        cmd_byte = self.serial_port.read(1)
-
-                        if len(cmd_byte) == 0: continue
-
-                        data = cmd_byte[0]
-                        
-                        if data == 0xFE: # DEBUG Byte
-                            print(f"DEBUG Byte = {self.serial_port.read(1)[0]}")
-                            continue
-                        elif data == 0xFD: # DEBUG Float
-                            float_value = struct.unpack('<f', self.serial_port.read(4))[0]
-                            print(f"DEBUG Float = {float_value:.4f}")
-                            continue
-
-                        verb = (data & 0xF0) >> 4
-                        noun =  data & 0x0F
-
-                        # print(f"\n-----====| RECEIVE [{hex(data)}] VERB: {verb} | NOUN: {noun} |====-----")
-
-                        if verb == 0: # MCU request data
-                            data_to_send = None
-
-                            with self.state_lock:
-                                if 0 <= noun < len(self.state):
-                                    data_to_send = self.state[noun]
-                                else:
-                                    i = noun - len(self.state)
-                                    if i==0: # av accel
-                                        data_to_send = self.available_thrust / self.mass
-                                    elif i==1: # av accel ang
-                                        data_to_send = self.available_torque / self.moment_of_inertia
-                                    elif i==2: # ut
-                                        data_to_send = self.ut
-                                    elif i==3: # gravity y
-                                        data_to_send = celestial_body.gravity[1]
-                                    elif i==4: # fuel level
-                                        data_to_send = (self.fuel_mass / self.fuel_capacity) * 100
-                                    elif i==5: # situation
-                                        data_to_send = self.situation.value
-                                    else:
-                                        print(f"ERROR: MCU request invalid noun({noun})")
-
-                            self.SerialWrite(data_to_send)
-
-                            continue
-
-                        if verb == 1: # MCU send data
-                            raw_bytes = self.serial_port.read(4)
-                            if len(raw_bytes) == 4:
-                                float_value = struct.unpack('<f', raw_bytes)[0]
-                                
-                                if 0 <= noun < len(self.control.state):
-                                    with self.control_lock:
-                                        self.control[noun] = float_value
-                                        # print(f"\t MCU SEND DATA: Idx {noun} = {float_value:.4f}")
-                                        print(f"Control[{noun}] = {float_value:.4f}")
-                                else:
-                                    print(f"ERROR: MCU write invalid noun({noun})")
-                            else:
-                                print("ERROR: Insuficient byte for float operation")
-                            continue
-
-                        if verb == 2: # MCU request/send PACKAGE
-                            if noun == 0: # request
-                                with self.control_lock:
-                                    for data_to_send in [self.ut] + list(self.state) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia, self.situation.value]:
-                                        self.SerialWrite(data_to_send)
-                                continue
-
-                            if noun == 1: # send
-                                with self.control_lock:
-                                    for i in range(2):
-                                        raw_bytes = self.serial_port.read(4)
-                                        if len(raw_bytes) == 4:
-                                            float_value = struct.unpack('<f', raw_bytes)[0]
-                                            self.control[i] = float_value
-                                            # print(f"Control[{i}] = {float_value:.4f}")
-                                        else:
-                                            print("ERROR: Insuficient byte for float operation")
-                                continue
-                            print(f"ERROR: MCU write invalid noun({noun})")
-                            continue
-                                        
-
-                except Exception as err:
-                    print(f"CRITIAL ERROR: {err}")
-                    self.serial_port.reset_input_buffer() # clear buffer
-
-        self.serial_thread = Thread(target=serial_reader)
-        self.serial_thread.daemon = True
-        self.serial_thread.start()
+        self.communication = Communication(self, port, baud_rate)
 
         self.reference_frame = ReferenceFrame(self.angle, self.position)
 
@@ -193,33 +94,28 @@ class Vessel:
             ])
 
         self.solver = RK4(dSdt)
-    
-    def SerialWrite(self, value):
-        if isinstance(value, float):
-            self.serial_port.write(struct.pack('<f', value))
-        elif isinstance(value, int):
-            self.serial_port.write(bytes([value]))
+
+        self.communication.start()
 
     def check_ground_collision(self):
-        vertices = list(self.shape.local_vertices)
-        # for e in self.engines: vertices += list(e.shape.local_vertices)
-        # for e in self.rcs_engines: vertices += list(e.shape.local_vertices)
-        for p in self.parts: vertices += list(p.shape.local_vertices)
+        for part in [self, *self.parts]:
+            if not part.shape.artist.get_visible(): continue
 
-        for local_vertex in vertices:
-            vertex = self.reference_frame.transform_position_to_global(local_vertex)
-            ground_height = self.body.terrain(vertex[0])
+            for local_vertex in part.shape.local_vertices:
+                vertex = self.reference_frame.transform_position_to_global(local_vertex)
+                ground_height = self.body.terrain(vertex[0])
 
-            if vertex[1] <= ground_height:
-                dy = self.body.terrain.get_deriv(vertex[0])
-                tangent = np.array([1, dy])*(1/np.sqrt(1+dy**2))
+                if vertex[1] <= ground_height:
+                    dy = self.body.terrain.get_deriv(vertex[0])
+                    tangent = np.array([1, dy])*(1/np.sqrt(1+dy**2))
 
-                yield {
-                    "normal": np.array([-tangent[1], tangent[0]]),
-                    "tangent": tangent,
-                    "point_global": vertex,
-                    "ground_height": ground_height
-                }
+                    yield {
+                        "part": part,
+                        "normal": np.array([-tangent[1], tangent[0]]),
+                        "tangent": tangent,
+                        "point_global": vertex,
+                        "ground_height": ground_height
+                    }
 
     @property
     def position(self):
@@ -263,6 +159,9 @@ class Vessel:
     def mass(self):
         return self.dry_mass + self.fuel_mass
 
+    def apply_collision_energy(self, energy:float):
+        return
+
     def add_engine(self, x_offset, engine):
         engine.position = self.size*np.array([0., .5]) + np.array([x_offset, 0.])
         self.engines.append(engine)
@@ -282,17 +181,13 @@ class Vessel:
         self.update_forces()
 
     def add_impulse_at(self, impulse, point_global):
-        with self.state_lock:
-            # linear velocity
-            delta_v = impulse / self.mass
-            self.state[2] += delta_v[0] # vx
-            self.state[3] += delta_v[1] # vy
+        # linear velocity
+        self.velocity += impulse / self.mass
             
-        # torque
+        # angular velocity
         r = point_global - self.position
         torque_impulse = r[0] * impulse[1] - r[1] * impulse[0]
-
-        with self.state_lock: self.state[5] += torque_impulse / self.moment_of_inertia
+        self.angular_velocity += torque_impulse / self.moment_of_inertia
 
     def get_velocity_at(self, point_global):
         v_com = self.velocity
@@ -374,7 +269,6 @@ class Vessel:
         hits = self.check_ground_collision()
 
         for info in hits:
-
             r_vec = info["point_global"] - self.position
             point_vel = self.get_velocity_at(info["point_global"])
             normal = info["normal"]
@@ -386,11 +280,14 @@ class Vessel:
             if vel_normal < 0.:
                 inv_mass = 1. / self.mass
                 inv_moi = 1. / self.moment_of_inertia
-                
+
                 # normal
                 r_cross_n = r_vec[0] * normal[1] - r_vec[1] * normal[0]
-                jn_mag = (-RESTITUION * vel_normal) / (inv_mass + inv_moi*r_cross_n**2)
+                m_eff_n = 1. / (inv_mass + inv_moi * r_cross_n**2)
+                jn_elastic = -vel_normal * m_eff_n
+                jn_mag = (1.-RESTITUTION) * jn_elastic
                 impulse_n = jn_mag * normal
+                absorbed_energy = (1. - RESTITUTION**2) * (jn_elastic**2 / (2. * m_eff_n))
                 
                 # tangent
                 r_cross_t = r_vec[0] * tangent[1] - r_vec[1] * tangent[0]
@@ -402,6 +299,8 @@ class Vessel:
                 impulse_t = jt_mag * tangent
 
                 self.add_impulse_at(impulse_n + impulse_t, info["point_global"])
+
+                info["part"].apply_collision_energy(absorbed_energy)
 
                 # prevent ground stuck
                 penetration_depth = info["ground_height"] - info["point_global"][1]

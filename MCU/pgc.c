@@ -173,7 +173,6 @@ void DSKY_Keyboard(void) {
 inline void read_environment(void) {
     Serial_SendByte(0x20); // request package
 
-    ut = Serial_ReadFloat();
     pos_x = Serial_ReadFloat();
     pos_y = Serial_ReadFloat();
     vel_x = Serial_ReadFloat();
@@ -182,6 +181,7 @@ inline void read_environment(void) {
     ang_vel = Serial_ReadFloat();
     av_accel = Serial_ReadFloat();
     av_accel_ang = Serial_ReadFloat();
+    ut = Serial_ReadFloat();
     situation = Serial_ReadByte();
 }
 

@@ -21,14 +21,16 @@ universe = Universe(celestial_body)
 
 ### VESSEL
 
+MAX_SAFE_IMPACT_ENERGY_VESSEL = 5e3
 MAX_SAFE_IMPACT_ENERGY_GEARS = 10e3
 
 lunar_module = Vessel(
-    position=np.array([11.0, 10.0]),
-    velocity=np.array([0., -1.]),
+    position=np.array([10.0, 80.0]),
+    velocity=np.array([0., -10.]),
     dry_mass=400.0,
     fuel_mass=1500.0,
     celestial_body=celestial_body,
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_VESSEL,
     size=np.array([2.0, 3.5]),
     color="orange"
 )
@@ -126,8 +128,7 @@ time_to_ground = (-lunar_module.velocity[1] - np.sqrt(lunar_module.velocity[1]**
 search_spot = lunar_module.position[0] + lunar_module.velocity[0]*time_to_ground
 search_radius = lunar_module.position[1]
 
-# target_position = celestial_body.get_flat_spot(0, 1000)
-target_position = celestial_body.get_flat_spot(search_spot-search_radius, search_spot+search_radius)
+lunar_module.target_position = celestial_body.get_flat_spot(search_spot-search_radius, search_spot+search_radius)
 
 # find minimum Tgo
 # from PDG import minimize_tgo
@@ -152,7 +153,21 @@ def setup_func(ax):
         ha="left", va="top", fontweight="bold"
     )
 
-    ax.scatter(*target_position, marker="x", color="red", label="Target landing")
+    # ax.scatter(*lunar_module.target_position, marker="x", color="red", label="Planned landing site")
+
+    ax.annotate(
+        "Planned landing site",
+        xy=lunar_module.target_position,
+        xytext=(10, -50),
+        ha="center",
+        textcoords="offset points",
+        arrowprops=dict(
+            arrowstyle="->",
+            color="red",
+            linestyle="dashed"
+        ),
+        color="red"
+    )
 
 def loop_func(ut):
     global text_ut

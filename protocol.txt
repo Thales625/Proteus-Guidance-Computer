@@ -39,7 +39,6 @@ VERBs:
         NOUNs:
         0: Request a package
             data:
-                ut (float32)
                 position x (float32)
                 position y (float32)
                 velocity x (float32)
@@ -48,6 +47,7 @@ VERBs:
                 ang. velocity (float32)
                 av. acceleration (float32)
                 av. ang. acceleration (float32)
+                ut (float32)
                 situation (byte)
 
         1: Send a package

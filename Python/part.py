@@ -15,6 +15,4 @@ class Part:
         self.shape.draw()
     
     def apply_collision_energy(self, energy:float):
-        print(f"ENERGY: {energy:.2f}")
-
         if energy > self.max_safe_impact_energy: self.shape.disable()

@@ -42,7 +42,9 @@ class Communication:
                         data_to_send = None
 
                         with self.state_lock:
-                            if 0 <= noun < len(self.state):
+                            if noun < 2:
+                                data_to_send = self.state[noun] - self.target_position[noun]
+                            elif 2 <= noun < len(self.state):
                                 data_to_send = self.state[noun]
                             else:
                                 i = noun - len(self.state)
@@ -55,7 +57,7 @@ class Communication:
                                 elif i==3: # gravity y
                                     data_to_send = self.body.gravity[1]
                                 elif i==4: # fuel level
-                                    data_to_send = (self.fuel_mass / self.fuel_capacity) * 100
+                                    data_to_send = (self.fuel_mass / self.fuel_capacity) * 100.
                                 elif i==5: # situation
                                     data_to_send = self.situation.value
                                 else:
@@ -83,8 +85,8 @@ class Communication:
 
                     if verb == 2: # MCU request/send PACKAGE
                         if noun == 0: # request
-                            with self.control_lock:
-                                for data_to_send in [self.ut] + list(self.state) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia, self.situation.value]:
+                            with self.state_lock:
+                                for data_to_send in [self.state[0]-self.target_position[0], self.state[1]-self.target_position[1]] + list(self.state[2:]) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia, self.ut, self.situation.value]:
                                     self.serial_write(data_to_send)
                             continue
 

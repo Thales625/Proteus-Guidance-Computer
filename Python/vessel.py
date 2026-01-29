@@ -22,7 +22,7 @@ class Situation(IntEnum):
 def get_torque(force, position): return force[0] * position[1] - force[1] * position[0]
 
 class Vessel:
-    def __init__(self, position, velocity, dry_mass, fuel_mass, celestial_body, moi=None, size=np.array([20., 80.]), color="gray", port="/dev/tnt1", baud_rate=9600) -> None:
+    def __init__(self, position, velocity, dry_mass, fuel_mass, celestial_body, max_safe_impact_energy=10e3, moi=None, size=np.array([20., 80.]), color="gray", port="/dev/tnt1", baud_rate=9600) -> None:
         self.situation = Situation.FLYING
 
         self.state = np.array([
@@ -47,6 +47,9 @@ class Vessel:
         self.available_torque = 0.
 
         self.body = celestial_body
+
+        self.max_safe_impact_energy = max_safe_impact_energy
+        self.target_position = np.array([0., 0.])
 
         # Serial communication
         self.state_lock = Lock()
@@ -160,7 +163,8 @@ class Vessel:
         return self.dry_mass + self.fuel_mass
 
     def apply_collision_energy(self, energy:float):
-        return
+        if energy > self.max_safe_impact_energy:
+            print("CRITICAL DAMAGE!")
 
     def add_engine(self, x_offset, engine):
         engine.position = self.size*np.array([0., .5]) + np.array([x_offset, 0.])

@@ -45,3 +45,5 @@ def text_bar(value, max_value, width=10):
     filled = int(max(0.0, min(1.0, 0.0 if max_value <= 0 else value / max_value)) * width)
 
     return "█" * filled + "░" * (width - filled)
+
+def get_torque(force, position): return force[0] * position[1] - force[1] * position[0]

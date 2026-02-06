@@ -5,20 +5,20 @@ from reference_frame import ReferenceFrame
 from shapes import Polygon
 from plume import Plume
 
-class RCSEngine:
-    def __init__(self, vessel_reference_frame, rotation, size:float, max_thrust, isp, color="white") -> None:
-        self.direction = np.array([1., 0.])
+from utils import vec2_from_angle, get_torque
 
-        self.reference_frame = ReferenceFrame(rotation)
+class RCSEngine:
+    def __init__(self, vessel_reference_frame, position, rotation, size:float, max_thrust, isp, color="white") -> None:
+        self.reference_frame = ReferenceFrame(rotation, position)
 
         self.shape = Polygon(
             vertices=[
-                size*np.array([0.5, 0.5]),
-                size*np.array([0.0, -0.5]),
-                size*np.array([-0.5, 0.5]),
+                size*np.array([1.0, 1.0]),
+                size*np.array([0.0, 0]),
+                size*np.array([-1.0, 1.0]),
             ],
             color=color,
-            zorder=3
+            zorder=6
         )
         self.shape.reference_frame = vessel_reference_frame
 
@@ -27,7 +27,8 @@ class RCSEngine:
         self.exhaust_velocity = isp * 9.80665
         
         self.max_thrust = max_thrust
-
+        self.max_torque = -get_torque(max_thrust*self.direction, self.position)
+        
         # plume
         self.plume = Plume(
             vessel_reference_frame=vessel_reference_frame,
@@ -37,7 +38,7 @@ class RCSEngine:
         )
     
     def throttle(self, gimbal):
-        if np.sign(self.direction[0]) == np.sign(gimbal): return abs(gimbal)
+        if np.sign(self.max_torque) == np.sign(gimbal): return abs(gimbal)
         return 0
 
     def update(self, gimbal):
@@ -53,3 +54,15 @@ class RCSEngine:
             self.plume.draw(self.reference_frame())
         else:
             self.plume.shape.disable()
+
+    @property
+    def direction(self):
+        return vec2_from_angle(self.reference_frame.rotation)
+    
+    @property
+    def angle(self):
+        return self.reference_frame.rotation
+
+    @property
+    def position(self):
+        return self.reference_frame.translation

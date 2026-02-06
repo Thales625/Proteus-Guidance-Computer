@@ -47,6 +47,20 @@ class Universe:
 
         for part in self.parts: self._shapes.append(part.shape)
     
+    def UpdateTerrain(self, ax):
+        x_min, x_max = ax.get_xlim()
+        
+        width = x_max - x_min
+
+        buffer = width * .5
+        render_min = x_min - buffer
+        render_max = x_max + buffer
+
+        x_values = np.linspace(render_min, render_max, 500)
+        y_values = self.celestial_body.terrain(x_values)
+
+        self.terrain_line.set_data(x_values, y_values)
+
     def SetupShapes(self, ax):
         for shape in self._shapes: shape.setup(ax)
     
@@ -66,11 +80,10 @@ class Universe:
 
         setup_func(ax)
 
+        self.terrain_line, = ax.plot([], [], color="gray", linewidth=2, label="Surface")
+
         def update(frame):
             ut = frame*dt
-
-            self.PhysicsLoop(dt, ut)
-            self.RenderLoop()
 
             # camera follows rocket
             if self.cam_follow_rocket:
@@ -81,9 +94,11 @@ class Universe:
                 ax.set_xlim(x - self.cam_zoom, x + self.cam_zoom)
                 ax.set_ylim(y - self.cam_zoom, y + self.cam_zoom)
 
-            return artists + loop_func(ut)
+            self.PhysicsLoop(dt, ut)
+            self.RenderLoop()
+            self.UpdateTerrain(ax)
 
-        ax.plot(*self.celestial_body.curve(-100, 100), c="gray") # surface
+            return artists + loop_func(ut) + [self.terrain_line]
 
         def on_key(event):
             if event.key == "+":

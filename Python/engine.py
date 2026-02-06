@@ -6,21 +6,19 @@ from shapes import Polygon
 from plume import Plume
 
 class Engine:
-    def __init__(self, vessel_reference_frame, size, max_thrust, isp, max_angle=np.pi/4, color="black") -> None:
-        self.position = np.array([0.0, 0.0]) # vessel reference frame
-        self.angle = 0.0
-        self.direction = np.array([0.0, 0.0])
-
+    def __init__(self, vessel_reference_frame, size, max_thrust, isp, max_angle=np.pi/4., color="black") -> None:
         self.reference_frame = ReferenceFrame()
 
         self.shape = Polygon(
             vertices=[
-                size*np.array([0.5, 0.5]),
-                size*np.array([0.0, -0.5]),
-                size*np.array([-0.5, 0.5]),
+                size*np.array([1.0, 1.0]),
+                size*np.array([0.8, -0.5]),
+                size*np.array([0.0, -1.0]),
+                size*np.array([-0.8, -0.5]),
+                size*np.array([-1.0, 1.0]),
             ],
             color=color,
-            zorder=3,
+            zorder=2,
             reference_frame=vessel_reference_frame
         )
 
@@ -34,14 +32,27 @@ class Engine:
         # plume
         self.plume = Plume(
             vessel_reference_frame=vessel_reference_frame,
-            nozzle_size=size
+            nozzle_size=size,
+            edgecolor="orange"
         )
 
-    def update(self, throttle):
-        # update reference frame
-        self.reference_frame.rotation = self.angle
-        self.reference_frame.translation = self.position
 
+    @property
+    def position(self):
+        return self.reference_frame.translation
+    @position.setter
+    def position(self, value):
+        self.reference_frame.translation = value
+
+    @property
+    def angle(self):
+        return self.reference_frame.rotation
+    @angle.setter
+    def angle(self, value):
+        self.reference_frame.rotation = value
+    
+
+    def update(self, throttle):
         # update plume
         self.plume.set_scale(throttle + ((random()*0.1) if throttle > 0. else 0.))
     

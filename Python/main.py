@@ -21,70 +21,74 @@ universe = Universe(celestial_body)
 
 ### VESSEL
 
-MAX_SAFE_IMPACT_ENERGY_VESSEL = 5e3
+MAX_SAFE_IMPACT_ENERGY_CAPSULE = 2e3
+MAX_SAFE_IMPACT_ENERGY_TANK = 5e3
 MAX_SAFE_IMPACT_ENERGY_GEARS = 10e3
 
+scale = 0.01
+
+# tank
 lunar_module = Vessel(
-    position=np.array([10.0, 80.0]),
-    velocity=np.array([0., -10.]),
+    position=np.array([0.0, 300.0]),
+    velocity=np.array([10., 0.]),
     dry_mass=400.0,
-    fuel_mass=1500.0,
+    fuel_mass=2500.0,
     celestial_body=celestial_body,
-    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_VESSEL,
-    size=np.array([2.0, 3.5]),
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_TANK,
+    size=scale*np.array([410., 170.]),
     color="orange"
 )
 
-# engines
-lunar_module.add_engine(0.,
-    Engine(
-        vessel_reference_frame=lunar_module.reference_frame,
-        size=np.array([.4, .8]),
-        max_thrust=5000.,
-        isp=290,
-        max_angle=np.radians(30.)
-    )
-)
-lunar_module.add_engine(.55,
-    Engine(
-        vessel_reference_frame=lunar_module.reference_frame,
-        size=np.array([.4, .7]),
-        max_thrust=1000.0,
-        isp=290,
-        max_angle=np.radians(20.)
-    )
-)
-lunar_module.add_engine(-.55,
-    Engine(
-        vessel_reference_frame=lunar_module.reference_frame,
-        size=np.array([.4, .7]),
-        max_thrust=1000.0,
-        isp=290,
-        max_angle=np.radians(20.)
-    )
-)
+# capsule
+lunar_module.parts.append(Part(
+    position=np.array([0., 0.072]),
+    vertices=[
+        scale*np.array([80., -90.]),
+        scale*np.array([152., -180.]),
+        scale*np.array([152., -268.]),
+        scale*np.array([135., -327.]),
+        scale*np.array([83., -365.]),
 
-# rcs
-lunar_module.add_rcs_engine(-1.3,
-    RCSEngine(
-        vessel_reference_frame=lunar_module.reference_frame,
-        rotation=np.radians(0.),
-        size=np.array([.3, .4]),
-        max_thrust=2000.,
-        isp=260,
-    ),
-    left=False
-)
-lunar_module.add_rcs_engine(-1.3,
-    RCSEngine(
-        vessel_reference_frame=lunar_module.reference_frame,
-        rotation=np.radians(0.),
-        size=np.array([.3, .4]),
-        max_thrust=2000.,
-        isp=260,
-    ),
-    left=True
-)
+        scale*np.array([-83., -365.]),
+        scale*np.array([-135., -327.]),
+        scale*np.array([-152., -268.]),
+        scale*np.array([-152., -180.]),
+        scale*np.array([-80., -90.]),
+
+    ],
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_CAPSULE,
+    color="gray",
+    zorder=3,
+    reference_frame=lunar_module.reference_frame
+))
+
+lunar_module.parts.append(Part(
+    position=np.array([0., 0.]),
+    vertices=[
+        scale*np.array([-160., -225.]),
+        scale*np.array([-200., -227.]),
+        scale*np.array([-240., -188]),
+        scale*np.array([-200., -92]),
+    ],
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_CAPSULE,
+    color=(0.75, 0.76, 0.72),
+    zorder=3,
+    reference_frame=lunar_module.reference_frame,
+))
+lunar_module.parts.append(Part(
+    position=np.array([0., 0.]),
+    vertices=[
+        scale*np.array([35., -326.]),
+        scale*np.array([65., -60.]),
+        scale*np.array([-65., -60]),
+        scale*np.array([-35., -326]),
+    ],
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_CAPSULE,
+    color=(0.75, 0.76, 0.72),
+    zorder=3,
+    reference_frame=lunar_module.reference_frame,
+    has_collision=False
+))
 
 # landing legs
 w = 0.05
@@ -102,8 +106,9 @@ lunar_module.parts.append(Part(
     ], -angle),
     max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_GEARS,
     color=c,
-    zorder=6,
-    reference_frame=lunar_module.reference_frame
+    zorder=8,
+    reference_frame=lunar_module.reference_frame,
+    collision_func=lambda: setattr(lunar_module.situation, "contact", True)
 ))
 
 lunar_module.parts.append(Part(
@@ -116,8 +121,147 @@ lunar_module.parts.append(Part(
     ], angle),
     max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_GEARS,
     color=c,
-    zorder=6,
-    reference_frame=lunar_module.reference_frame
+    zorder=8,
+    reference_frame=lunar_module.reference_frame,
+    collision_func=lambda: setattr(lunar_module.situation, "contact", True)
+))
+
+# engines
+lunar_module.add_engine(0.,
+    Engine(
+        vessel_reference_frame=lunar_module.reference_frame,
+        size=scale*np.array([64., 50.]),
+        max_thrust=5000.,
+        isp=290,
+        # max_angle=np.radians(30.)
+        max_angle=np.radians(6.)
+    )
+)
+
+# rcs
+rcs_pos_left = scale*np.array([162., -220.])
+rcs_pos_right = scale*np.array([-162., -220.])
+rcs_size = scale*np.array([10., 30.])
+rcs_max_thrust = 2000.
+rcs_isp = 260
+lunar_module.add_rcs(
+    RCSEngine(
+        vessel_reference_frame=lunar_module.reference_frame,
+        rotation=np.radians(0.),
+        position=rcs_pos_right,
+        size=rcs_size,
+        max_thrust=rcs_max_thrust,
+        isp=rcs_isp,
+    )
+)
+lunar_module.add_rcs(
+    RCSEngine(
+        vessel_reference_frame=lunar_module.reference_frame,
+        rotation=np.radians(90.),
+        position=rcs_pos_right,
+        size=rcs_size,
+        max_thrust=rcs_max_thrust,
+        isp=rcs_isp,
+    )
+)
+
+lunar_module.add_rcs(
+    RCSEngine(
+        vessel_reference_frame=lunar_module.reference_frame,
+        rotation=np.radians(180.),
+        position=rcs_pos_right,
+        size=rcs_size,
+        max_thrust=rcs_max_thrust,
+        isp=rcs_isp,
+    )
+)
+
+lunar_module.add_rcs(
+    RCSEngine(
+        vessel_reference_frame=lunar_module.reference_frame,
+        rotation=np.radians(0.),
+        position=rcs_pos_left,
+        size=rcs_size,
+        max_thrust=rcs_max_thrust,
+        isp=rcs_isp,
+    )
+)
+lunar_module.add_rcs(
+    RCSEngine(
+        vessel_reference_frame=lunar_module.reference_frame,
+        rotation=np.radians(-90.),
+        position=rcs_pos_left,
+        size=rcs_size,
+        max_thrust=rcs_max_thrust,
+        isp=rcs_isp,
+    )
+)
+
+lunar_module.add_rcs(
+    RCSEngine(
+        vessel_reference_frame=lunar_module.reference_frame,
+        rotation=np.radians(-180.),
+        position=rcs_pos_left,
+        size=rcs_size,
+        max_thrust=rcs_max_thrust,
+        isp=rcs_isp,
+    )
+)
+
+# rcs cover
+lunar_module.parts.append(Part(
+    position=np.array([0., 0.]),
+    vertices=[
+        scale*np.array([-147., -240.]),
+        scale*np.array([-171., -232.]),
+        scale*np.array([-171., -208.]),
+        scale*np.array([-147., -200.]),
+    ],
+    color="gray",
+    zorder=7,
+    reference_frame=lunar_module.reference_frame,
+    has_collision=False
+))
+lunar_module.parts.append(Part(
+    position=np.array([0., 0.]),
+    vertices=[
+        scale*np.array([147., -240.]),
+        scale*np.array([171., -232.]),
+        scale*np.array([171., -208.]),
+        scale*np.array([147., -200.]),
+    ],
+    color="gray",
+    zorder=7,
+    reference_frame=lunar_module.reference_frame,
+    has_collision=False
+))
+
+# rcs guide
+lunar_module.parts.append(Part(
+    position=np.array([0., 0.]),
+    vertices=[
+        scale*np.array([150., -188.]),
+        scale*np.array([150., -70.]),
+        scale*np.array([200., -71.]),
+        scale*np.array([173., -188.]),
+    ],
+    color=(0.42, 0.42, 0.42),
+    zorder=4,
+    reference_frame=lunar_module.reference_frame,
+    has_collision=False
+))
+lunar_module.parts.append(Part(
+    position=np.array([0., 0.]),
+    vertices=[
+        scale*np.array([-150., -188.]),
+        scale*np.array([-150., -70.]),
+        scale*np.array([-200., -71.]),
+        scale*np.array([-173., -188.]),
+    ],
+    color=(0.42, 0.42, 0.42),
+    zorder=4,
+    reference_frame=lunar_module.reference_frame,
+    has_collision=False
 ))
 
 universe.vessels.append(lunar_module)
@@ -125,10 +269,10 @@ universe.vessels.append(lunar_module)
 ### CONTROL
 
 time_to_ground = (-lunar_module.velocity[1] - np.sqrt(lunar_module.velocity[1]**2 - 2*celestial_body.gravity[1]*lunar_module.position[1])) / celestial_body.gravity[1]
-search_spot = lunar_module.position[0] + lunar_module.velocity[0]*time_to_ground
-search_radius = lunar_module.position[1]
+search_spot_x = lunar_module.position[0] + lunar_module.velocity[0]*time_to_ground
+search_radius = max(100, abs(lunar_module.position[1]))
 
-lunar_module.target_position = celestial_body.get_flat_spot(search_spot-search_radius, search_spot+search_radius)
+lunar_module.target_position = celestial_body.get_flat_spot(search_spot_x-search_radius, search_spot_x+search_radius)
 
 # find minimum Tgo
 # from PDG import minimize_tgo
@@ -175,6 +319,9 @@ def loop_func(ut):
     text_ut.set_text(f"ut = {ut:.2f} s")
     text_fuel.set_text(f"fuel = [{text_bar(lunar_module.fuel_mass, lunar_module.fuel_capacity)}] | {lunar_module.fuel_mass:.2f} kg")
 
+    # lunar_module.control.gimbal = 1.0
+    # lunar_module.control.throttle = 1.0
+
     return [text_ut, text_fuel]
 
-universe.Simulate(setup_func, loop_func, dt=0.025)
+universe.Simulate(setup_func, loop_func, dt=0.05)

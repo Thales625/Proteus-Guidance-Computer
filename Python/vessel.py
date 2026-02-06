@@ -1,7 +1,6 @@
 import numpy as np
 
 from threading import Lock
-from enum import IntEnum
 
 from control import Control
 from reference_frame import ReferenceFrame
@@ -9,21 +8,28 @@ from shapes import Polygon
 from solver import RK4
 from communication import Communication
 
-from utils import vec2_from_angle, rotate_vec2
+from utils import vec2_from_angle, get_torque
 
 RESTITUTION = 0.2
 FRICTION_COEF = 0.9
 
-class Situation(IntEnum):
-    FLYING = 0
-    LANDED = 1
-    SPLASHED = 2
+class Situation:
+    def __init__(self):
+        self.contact = False
+        self.crash = False
+        self.fuel_low = False
+        self.uplink = False
+    
+    def __call__(self):
+        res  = (int(self.contact)  << 0)
+        res |= (int(self.crash)    << 1)
+        res |= (int(self.fuel_low) << 2)
+        res |= (int(self.uplink)   << 3)
+        return res
   
-def get_torque(force, position): return force[0] * position[1] - force[1] * position[0]
-
 class Vessel:
     def __init__(self, position, velocity, dry_mass, fuel_mass, celestial_body, max_safe_impact_energy=10e3, moi=None, size=np.array([20., 80.]), color="gray", port="/dev/tnt1", baud_rate=9600) -> None:
-        self.situation = Situation.FLYING
+        self.situation = Situation()
 
         self.state = np.array([
             *position, # position
@@ -48,6 +54,7 @@ class Vessel:
 
         self.body = celestial_body
 
+        self.has_collision = True
         self.max_safe_impact_energy = max_safe_impact_energy
         self.target_position = np.array([0., 0.])
 
@@ -68,7 +75,7 @@ class Vessel:
                 self.size*np.array([.5, -.5])
             ],
             color=color,
-            zorder=5
+            zorder=3
         )
 
         self.engines = []
@@ -86,6 +93,17 @@ class Vessel:
             
             # linear
             accel_x, accel_y = self.force / self.mass + self.body.gravity
+
+            '''
+            return np.array([
+                0.,
+                0.,
+                0.,
+                0.,
+                0.,
+                0.,
+            ])
+            '''
             
             return np.array([
                 vx,        # dx/dt
@@ -102,7 +120,7 @@ class Vessel:
 
     def check_ground_collision(self):
         for part in [self, *self.parts]:
-            if not part.shape.artist.get_visible(): continue
+            if not part.shape.artist.get_visible() or not part.has_collision: continue
 
             for local_vertex in part.shape.local_vertices:
                 vertex = self.reference_frame.transform_position_to_global(local_vertex)
@@ -172,16 +190,8 @@ class Vessel:
 
         self.update_forces()
 
-    def add_rcs_engine(self, y_offset, rcs, left=True):
-        rcs.reference_frame.translation = self.size*np.array([.5 if left else -.5, 0.]) + np.array([0., y_offset])
-
-        rcs.reference_frame.rotation += np.radians(90.)
-        if left: rcs.reference_frame.rotation += np.pi
-
-        rcs.direction = vec2_from_angle(rcs.reference_frame.rotation)
-
+    def add_rcs(self, rcs):
         self.rcs_engines.append(rcs)
-
         self.update_forces()
 
     def add_impulse_at(self, impulse, point_global):
@@ -204,22 +214,22 @@ class Vessel:
         return v_com + v_tan
 
     def update_forces(self):
-        self.available_thrust = 0.
-        self.available_torque = 0.
-        for engine in self.engines:
-            self.available_thrust += engine.max_thrust
-            self.available_torque += get_torque(vec2_from_angle(engine.max_angle) * engine.max_thrust, engine.position)
+        with self.state_lock:
+            self.available_thrust = 0.
+            self.available_torque = 0.
+            for engine in self.engines:
+                self.available_thrust += engine.max_thrust
+                self.available_torque += get_torque(vec2_from_angle(engine.max_angle) * engine.max_thrust, engine.position)
 
-        for rcs_engine in self.rcs_engines:
-            force = rcs_engine.direction * rcs_engine.max_thrust
+            for rcs in self.rcs_engines:
+                if rcs.max_torque > 0: self.available_torque += rcs.max_torque
 
-            self.available_thrust += force[1]
-            self.available_torque += get_torque(force, rcs_engine.reference_frame.translation)
-
-        self.available_torque = abs(self.available_torque)
+            self.available_torque = abs(self.available_torque)
 
     def update(self, dt, ut):
-        with self.state_lock: self.ut = ut
+        with self.state_lock:
+            vessel_angle = self.state[4]
+            self.ut = ut
 
         with self.control_lock:
             gimbal = self.control.gimbal
@@ -231,7 +241,6 @@ class Vessel:
             engine.angle = 0.9*engine.angle + 0.1*gimbal * engine.max_angle # smooth
             # engine.angle = gimbal * engine.max_angle
 
-            engine.direction = -vec2_from_angle(self.angle + engine.angle)
             engine.update(throttle)
         
         # update rcs
@@ -244,20 +253,21 @@ class Vessel:
 
         if self.fuel_mass > 0:
             for engine in self.engines:
-                f = engine.max_thrust * self.control.throttle
-                self.force += f * engine.direction
+                f = engine.max_thrust * throttle
+
+                self.force -= f * vec2_from_angle(vessel_angle + engine.angle)
                 self.torque += get_torque(f * vec2_from_angle(engine.angle), engine.position)
 
                 self.fuel_mass -= f/engine.exhaust_velocity
-                engine.has_fuel = True
 
             for rcs_engine in self.rcs_engines:
-                f = rcs_engine.max_thrust * rcs_engine.throttle(self.control.gimbal)
-                self.force -= f * rotate_vec2(rcs_engine.direction, self.angle)
-                self.torque += get_torque(f*rcs_engine.direction, rcs_engine.reference_frame.translation)
+                rcs_throttle = rcs_engine.throttle(gimbal)
+                f = rcs_engine.max_thrust * rcs_throttle
 
-                self.fuel_mass -= f/engine.exhaust_velocity
-                rcs_engine.has_fuel = True
+                self.force -= f * vec2_from_angle(vessel_angle + rcs_engine.angle)
+                self.torque -= rcs_engine.max_torque * rcs_throttle
+
+                self.fuel_mass -= f/rcs_engine.exhaust_velocity
 
             if self.fuel_mass < 0:
                 for engine in self.engines + self.rcs_engines: engine.has_fuel = False
@@ -271,6 +281,8 @@ class Vessel:
 
         # check ground collision
         hits = self.check_ground_collision()
+
+        with self.state_lock: self.situation.contact = False
 
         for info in hits:
             r_vec = info["point_global"] - self.position
@@ -305,6 +317,7 @@ class Vessel:
                 self.add_impulse_at(impulse_n + impulse_t, info["point_global"])
 
                 info["part"].apply_collision_energy(absorbed_energy)
+                if (hasattr(info["part"], "collision_func")): info["part"].collision_func()
 
                 # prevent ground stuck
                 penetration_depth = info["ground_height"] - info["point_global"][1]

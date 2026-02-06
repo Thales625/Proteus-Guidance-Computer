@@ -8,10 +8,6 @@ class CelestialBody:
         self.gravity = np.array([0., -gravity])
         self.terrain = ProceduralTerrain(terrain_seed, terrain_harmonics)
 
-    def curve(self, min_x, max_x):
-        x_arr = np.arange(min_x, max_x, 1.)
-        return x_arr, self.terrain(x_arr)
-
     def get_flat_spot(self, x_min, x_max):
         def slope_cost(x): return np.abs(self.terrain.get_deriv(x))
 

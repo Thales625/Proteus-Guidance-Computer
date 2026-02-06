@@ -54,3 +54,10 @@ VERBs:
             data:
                 throttle (float32)
                 gimbal (float32)
+    
+    3 -> Joystick
+        NOUNs:
+        0: Request package
+            data:
+                value_x (float32)
+                value_y (float32)

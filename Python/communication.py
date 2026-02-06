@@ -2,10 +2,13 @@ from serial import Serial
 from threading import Thread
 import struct
 
+from joystick import Joystick
+
 class Communication:
     def __init__(self, vessel, port="/dev/tnt1", baud_rate=9600):
         self._vessel = vessel
         self.serial_port = Serial(port, baud_rate)
+        self.joystick = Joystick()
 
     def serial_write(self, value):
         if isinstance(value, float):
@@ -36,7 +39,7 @@ class Communication:
                     verb = (data & 0xF0) >> 4
                     noun =  data & 0x0F
 
-                    # print(f"\n-----====| RECEIVE [{hex(data)}] VERB: {verb} | NOUN: {noun} |====-----")
+                    # print(f"-----====| RECEIVE [{hex(data)}] VERB: {verb} | NOUN: {noun} |====-----")
 
                     if verb == 0: # MCU request data
                         data_to_send = None
@@ -59,12 +62,12 @@ class Communication:
                                 elif i==4: # fuel level
                                     data_to_send = (self.fuel_mass / self.fuel_capacity) * 100.
                                 elif i==5: # situation
-                                    data_to_send = self.situation.value
+                                    data_to_send = self.situation()
+                                    self.situation.uplink = not self.situation.uplink
                                 else:
                                     print(f"ERROR: MCU request invalid noun({noun})")
 
                         self.serial_write(data_to_send)
-
                         continue
 
                     if verb == 1: # MCU send data
@@ -86,7 +89,7 @@ class Communication:
                     if verb == 2: # MCU request/send PACKAGE
                         if noun == 0: # request
                             with self.state_lock:
-                                for data_to_send in [self.state[0]-self.target_position[0], self.state[1]-self.target_position[1]] + list(self.state[2:]) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia, self.ut, self.situation.value]:
+                                for data_to_send in [self.state[0]-self.target_position[0], self.state[1]-self.target_position[1]] + list(self.state[2:]) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia, self.ut, self.situation()]:
                                     self.serial_write(data_to_send)
                             continue
 
@@ -102,6 +105,15 @@ class Communication:
                                         print("ERROR: Insuficient byte for float operation")
                             continue
                         print(f"ERROR: MCU write invalid noun({noun})")
+                        continue
+
+                    if verb == 3: # MCU request JOYSTICK
+                        if self.joystick.enabled:
+                            for joystick_data in self.joystick.request(noun):
+                                self.serial_write(joystick_data)
+                            continue
+                        print(f"ERROR: Joystick is unavailable!")
+                        self.serial_write(float(0.0))
                         continue
 
             except Exception as err:

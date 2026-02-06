@@ -1,6 +1,11 @@
 # Assembly
 MCU/output/
 
+# esp-idf
+ESP32/.vscode/
+ESP32/build/
+ESP32/sdkconfig.old
+
 # Proteus
 Proteus/*.PWI
 Proteus/*.SDF

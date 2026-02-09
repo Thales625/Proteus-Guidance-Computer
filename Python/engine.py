@@ -33,7 +33,7 @@ class Engine:
         self.plume = Plume(
             vessel_reference_frame=vessel_reference_frame,
             nozzle_size=size,
-            edgecolor="orange"
+            #edgecolor="orange"
         )
 
 

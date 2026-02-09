@@ -81,6 +81,7 @@ class Vessel:
         self.engines = []
         self.rcs_engines = []
         self.parts = []
+        self.collideable_parts = []
 
         self.control = Control()
 
@@ -93,17 +94,6 @@ class Vessel:
             
             # linear
             accel_x, accel_y = self.force / self.mass + self.body.gravity
-
-            '''
-            return np.array([
-                0.,
-                0.,
-                0.,
-                0.,
-                0.,
-                0.,
-            ])
-            '''
             
             return np.array([
                 vx,        # dx/dt
@@ -119,8 +109,8 @@ class Vessel:
         self.communication.start()
 
     def check_ground_collision(self):
-        for part in [self, *self.parts]:
-            if not part.shape.artist.get_visible() or not part.has_collision: continue
+        for part in [self, *self.collideable_parts]:
+            if not part.shape.artist.get_visible(): continue
 
             for local_vertex in part.shape.local_vertices:
                 vertex = self.reference_frame.transform_position_to_global(local_vertex)
@@ -187,12 +177,15 @@ class Vessel:
     def add_engine(self, x_offset, engine):
         engine.position = self.size*np.array([0., .5]) + np.array([x_offset, 0.])
         self.engines.append(engine)
-
         self.update_forces()
 
     def add_rcs(self, rcs):
         self.rcs_engines.append(rcs)
         self.update_forces()
+
+    def add_part(self, part):
+        self.parts.append(part)
+        if part.has_collision: self.collideable_parts.append(part)
 
     def add_impulse_at(self, impulse, point_global):
         # linear velocity

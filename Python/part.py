@@ -1,16 +1,8 @@
-from shapes import Polygon
-
 class Part:
-    def __init__(self, position, vertices, color, max_safe_impact_energy=15e3, zorder=6, reference_frame=None, has_collision=True, collision_func=lambda: None) -> None:
-        self.shape = Polygon(
-            vertices=vertices+position,
-            color=color,
-            zorder=zorder,
-            reference_frame=reference_frame
-        )
-
-        self.max_safe_impact_energy = max_safe_impact_energy
+    def __init__(self, shape, has_collision=True, max_safe_impact_energy=15e3, collision_func=lambda: None) -> None:
+        self.shape = shape
         self.has_collision = has_collision
+        self.max_safe_impact_energy = max_safe_impact_energy
         self.collision_func = collision_func
     
     def draw(self):

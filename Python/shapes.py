@@ -62,3 +62,7 @@ class Line(Shape):
 
     def _update_data(self):
         self.artist.set_data([self._start[0], self._end[0]], [self._start[1], self._end[1]])
+
+    @property
+    def local_vertices(self):
+        return np.array([self._start, self._end])

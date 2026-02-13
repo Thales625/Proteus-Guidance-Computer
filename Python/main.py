@@ -15,7 +15,7 @@ from utils import rotate_vec2, text_bar
 celestial_body = CelestialBody(
     gravity=1.62,
     terrain_seed=1,
-    terrain_harmonics=2,
+    terrain_harmonics=4,
 )
 
 universe = Universe(celestial_body)
@@ -25,15 +25,20 @@ universe = Universe(celestial_body)
 MAX_SAFE_IMPACT_ENERGY_CAPSULE = 2e3
 MAX_SAFE_IMPACT_ENERGY_TANK = 5e3
 MAX_SAFE_IMPACT_ENERGY_GEARS = 10e3
+MAX_SAFE_IMPACT_ENERGY_STRUCTURE = 1e3
 
 scale = 0.01
 
 # tank
 lunar_module = Vessel(
-    position=np.array([0.0, 300.0]),
-    velocity=np.array([10., 0.]),
-    dry_mass=400.0,
-    fuel_mass=2500.0,
+    # position=np.array([0.0, 30.0]),
+    # velocity=np.array([5., 0.]),
+
+    position=np.array([0.0, 5000.0]),
+    velocity=np.array([100., -50.]),
+
+    dry_mass=4_200.,
+    fuel_mass=10_500.,
     celestial_body=celestial_body,
     max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_TANK,
     size=scale*np.array([410., 170.]),
@@ -97,7 +102,7 @@ w = 0.07
 h1 = 0.05
 h2 = 2.5
 c = "yellow"
-angle = np.pi/9.
+angle = np.pi/12.
 lunar_module.add_part(Part(
     shape=Polygon(
         vertices=rotate_vec2([
@@ -141,7 +146,8 @@ lunar_module.add_part(Part(
         zorder=2,
         reference_frame=lunar_module.reference_frame
     ),
-    has_collision=False
+    has_collision=True,
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_STRUCTURE
 ))
 lunar_module.add_part(Part(
     shape=Line(
@@ -152,7 +158,8 @@ lunar_module.add_part(Part(
         zorder=2,
         reference_frame=lunar_module.reference_frame
     ),
-    has_collision=False
+    has_collision=True,
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_STRUCTURE
 ))
 
 lunar_module.add_part(Part(
@@ -164,7 +171,8 @@ lunar_module.add_part(Part(
         zorder=2,
         reference_frame=lunar_module.reference_frame
     ),
-    has_collision=False
+    has_collision=True,
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_STRUCTURE
 ))
 lunar_module.add_part(Part(
     shape=Line(
@@ -175,7 +183,8 @@ lunar_module.add_part(Part(
         zorder=2,
         reference_frame=lunar_module.reference_frame
     ),
-    has_collision=False
+    has_collision=True,
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_STRUCTURE
 ))
 
 lunar_module.add_part(Part(
@@ -187,7 +196,8 @@ lunar_module.add_part(Part(
         zorder=2,
         reference_frame=lunar_module.reference_frame
     ),
-    has_collision=False
+    has_collision=True,
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_STRUCTURE
 ))
 lunar_module.add_part(Part(
     shape=Line(
@@ -198,7 +208,8 @@ lunar_module.add_part(Part(
         zorder=2,
         reference_frame=lunar_module.reference_frame
     ),
-    has_collision=False
+    has_collision=True,
+    max_safe_impact_energy=MAX_SAFE_IMPACT_ENERGY_STRUCTURE
 ))
 
 # engines
@@ -206,8 +217,9 @@ lunar_module.add_engine(0.,
     Engine(
         vessel_reference_frame=lunar_module.reference_frame,
         size=scale*np.array([64., 50.]),
-        max_thrust=5000.,
-        isp=290,
+        max_thrust=43_900.,
+        isp=311,
+        # max_angle=np.radians(45.)
         max_angle=np.radians(6.)
     )
 )
@@ -216,8 +228,8 @@ lunar_module.add_engine(0.,
 rcs_pos_left = scale*np.array([162., -220.])
 rcs_pos_right = scale*np.array([-162., -220.])
 rcs_size = scale*np.array([10., 30.])
-rcs_max_thrust = 2000.
-rcs_isp = 260
+rcs_max_thrust = 500.
+rcs_isp = 290
 lunar_module.add_rcs(
     RCSEngine(
         vessel_reference_frame=lunar_module.reference_frame,
@@ -345,7 +357,8 @@ universe.vessels.append(lunar_module)
 
 time_to_ground = (-lunar_module.velocity[1] - np.sqrt(lunar_module.velocity[1]**2 - 2*celestial_body.gravity[1]*lunar_module.position[1])) / celestial_body.gravity[1]
 search_spot_x = lunar_module.position[0] + lunar_module.velocity[0]*time_to_ground
-search_radius = max(100, abs(lunar_module.position[1]))
+search_radius = 50
+# search_radius = max(100, abs(lunar_module.position[1]))
 
 lunar_module.target_position = celestial_body.get_flat_spot(search_spot_x-search_radius, search_spot_x+search_radius)
 
@@ -353,6 +366,8 @@ lunar_module.target_position = celestial_body.get_flat_spot(search_spot_x-search
 
 text_ut = None
 text_fuel = None
+
+print("AV ACC ANG:", (180/3.1415)*(lunar_module.available_torque/lunar_module.moment_of_inertia))
 
 def setup_func(ax):
     global text_ut, text_fuel

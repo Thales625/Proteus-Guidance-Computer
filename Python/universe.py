@@ -71,8 +71,14 @@ class Universe:
     def Simulate(self, setup_func, loop_func, dt=0.01):
         fig, ax = plt.subplots()
 
+        fig.canvas.manager.set_window_title("PGC - Python")
+
         # ax.set_aspect("equal", adjustable="datalim")
         ax.set_aspect("equal")
+
+        # remove grid numbers
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
 
         self.UpdateShapes()
         self.SetupShapes(ax)

@@ -2,6 +2,7 @@ from serial import Serial
 from threading import Thread
 import struct
 
+from pdg import PDG
 from joystick import Joystick
 
 class Communication:
@@ -64,6 +65,9 @@ class Communication:
                                 elif i==5: # situation
                                     data_to_send = self.situation()
                                     self.situation.uplink = not self.situation.uplink
+                                elif i==6: # Tgo
+                                    data_to_send = PDG.minimize_tgo(self.state[0:2] - self.target_position, self.state[2:4], self.body.gravity, self.available_thrust / self.mass)
+                                    print(f"REQUESTED TGO: {data_to_send:.2f}")
                                 else:
                                     print(f"ERROR: MCU request invalid noun({noun})")
 

@@ -29,6 +29,7 @@ VERBs:
         9 -> gravity (float32)
         10-> fuel level (float32)
         11-> situation (byte)
+        12-> Tgo (float32)
 
     1 -> Send data
         NOUNs:
@@ -61,3 +62,7 @@ VERBs:
             data:
                 value_x (float32)
                 value_y (float32)
+
+    4 -> Event
+        NOUNs:
+        0: Update landing target

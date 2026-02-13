@@ -7,9 +7,9 @@ class ProceduralTerrain:
         rng = np.random.RandomState(seed)
         
         for _ in range(n_harmonics):
-            A = rng.uniform(1., 1.05)      # Amplitude (Height)
-            B = rng.uniform(0.05, 0.5)     # Frequency
-            C = rng.uniform(0.0, 2*np.pi)  # Phase
+            A = rng.uniform(1., 1.05)     # amplitude
+            B = rng.uniform(0.05, 0.5)    # frequency
+            C = rng.uniform(0.0, 2*np.pi) # phase
             
             self.harmonics.append((A, B, C))
 

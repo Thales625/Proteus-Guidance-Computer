@@ -28,7 +28,7 @@ class Situation:
         return res
   
 class Vessel:
-    def __init__(self, position, velocity, dry_mass, fuel_mass, celestial_body, max_safe_impact_energy=10e3, moi=None, size=np.array([20., 80.]), color="gray", port="/dev/tnt1", baud_rate=9600) -> None:
+    def __init__(self, position, velocity, dry_mass, fuel_mass, celestial_body, max_safe_impact_energy=10e3, size=np.array([20., 80.]), color="gray", port="/dev/tnt1", baud_rate=9600) -> None:
         self.situation = Situation()
 
         self.state = np.array([
@@ -46,8 +46,6 @@ class Vessel:
         self.dry_mass = dry_mass
         self.fuel_mass = fuel_mass
         self.fuel_capacity = fuel_mass
-
-        self.moment_of_inertia = moi or (.25 * self.mass * size.dot(size)) # moi approximation
 
         self.available_thrust = 0.
         self.available_torque = 0.
@@ -169,6 +167,10 @@ class Vessel:
     @property
     def mass(self):
         return self.dry_mass + self.fuel_mass
+    
+    @property
+    def moment_of_inertia(self): # moi approximation
+        return .25 * self.mass * self.size.dot(self.size)
 
     def apply_collision_energy(self, energy:float):
         if energy > self.max_safe_impact_energy:
@@ -212,7 +214,8 @@ class Vessel:
             self.available_torque = 0.
             for engine in self.engines:
                 self.available_thrust += engine.max_thrust
-                self.available_torque += get_torque(vec2_from_angle(engine.max_angle) * engine.max_thrust, engine.position)
+                self.available_torque -= get_torque(engine.max_thrust * vec2_from_angle(engine.max_angle), engine.position)
+                # self.available_torque += abs(get_torque(engine.max_thrust * vec2_from_angle(engine.max_angle), engine.position))
 
             for rcs in self.rcs_engines:
                 if rcs.max_torque > 0: self.available_torque += rcs.max_torque
@@ -251,7 +254,7 @@ class Vessel:
                 self.force -= f * vec2_from_angle(vessel_angle + engine.angle)
                 self.torque += get_torque(f * vec2_from_angle(engine.angle), engine.position)
 
-                self.fuel_mass -= f/engine.exhaust_velocity
+                self.fuel_mass -= dt * f/engine.exhaust_velocity
 
             for rcs_engine in self.rcs_engines:
                 rcs_throttle = rcs_engine.throttle(gimbal)
@@ -260,7 +263,7 @@ class Vessel:
                 self.force -= f * vec2_from_angle(vessel_angle + rcs_engine.angle)
                 self.torque -= rcs_engine.max_torque * rcs_throttle
 
-                self.fuel_mass -= f/rcs_engine.exhaust_velocity
+                self.fuel_mass -= dt * f/rcs_engine.exhaust_velocity
 
             if self.fuel_mass < 0:
                 for engine in self.engines + self.rcs_engines: engine.has_fuel = False

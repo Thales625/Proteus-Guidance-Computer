@@ -13,16 +13,16 @@ def sign(v):
     return 1.0
 
 # vector
-def vec2_from_angle(theta):
-    return np.array([-np.sin(theta), np.cos(theta)])
+def vec2_from_angle(radians):
+    return np.array([-np.sin(radians), np.cos(radians)])
 
 def angle_from_vec2(vec):
     return np.atan2(vec[0], -vec[1])
 
-def rotate_vec2(vecs, theta):
+def rotate_vec2(vecs, radians):
     rot = np.array([
-        [np.cos(theta), -np.sin(theta)],
-        [np.sin(theta),  np.cos(theta)]
+        [np.cos(radians), -np.sin(radians)],
+        [np.sin(radians),  np.cos(radians)]
     ])
 
     vecs = np.asarray(vecs)

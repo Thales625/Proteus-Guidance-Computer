@@ -64,7 +64,6 @@ class Communication:
                                     data_to_send = (self.fuel_mass / self.fuel_capacity) * 100.
                                 elif i==5: # situation
                                     data_to_send = self.situation()
-                                    self.situation.uplink = not self.situation.uplink
                                 elif i==6: # Tgo
                                     data_to_send = PDG.minimize_tgo(self.state[0:2] - self.target_position, self.state[2:4], self.body.gravity, self.available_thrust / self.mass)
                                     print(f"REQUESTED TGO: {data_to_send:.2f}")
@@ -93,6 +92,7 @@ class Communication:
                     if verb == 2: # MCU request/send PACKAGE
                         if noun == 0: # request
                             with self.state_lock:
+                                self.situation.uplink = not self.situation.uplink
                                 for data_to_send in [self.state[0]-self.target_position[0], self.state[1]-self.target_position[1]] + list(self.state[2:]) + [self.available_thrust/self.mass, self.available_torque/self.moment_of_inertia, self.ut, self.situation()]:
                                     self.serial_write(data_to_send)
                             continue
@@ -118,6 +118,13 @@ class Communication:
                             continue
                         print(f"ERROR: Joystick is unavailable!")
                         self.serial_write(float(0.0))
+                        continue
+
+                    if verb == 4: # MCU trigger event
+                        if noun == 0: # update landing target
+                            self.update_landing_target()
+                            continue
+                        print(f"ERROR: MCU write invalid noun({noun})")
                         continue
 
             except Exception as err:

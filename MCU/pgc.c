@@ -30,6 +30,20 @@ float REG1, REG2, REG3;
 
 byte_t led_state = 0b1111;
 
+void P63(void) {
+    // throttle control
+    // throttle = -(50.0f + vel_y + gravity_y) / av_accel;
+    throttle = ((float) NOUN) / 100.0f;
+    
+    // gimbal control
+    float target_angle = angle_from_vec2(-vel_x, fabsf(vel_y));
+    float delta_angle = target_angle - angle; // normalizing angle
+    if (delta_angle > 3.14159265f) delta_angle -= 6.2831853f;
+    else if (delta_angle < -3.14159265f) delta_angle += 6.2831853f;
+
+    gimbal = (ang_vel - sqrtf(fabsf(delta_angle) * av_accel_ang) * signf(delta_angle)) / av_accel_ang;
+}
+
 void P64(void) {
     t_go -= dt;
 
@@ -58,14 +72,12 @@ void P64(void) {
 }
 
 void P65(void) {
-    float target_dir_x = -vel_x;
-    float target_dir_y = 10.f * fabsf(vel_y);
-
     // throttle control
     throttle = (-1.0f - vel_y - gravity_y) / av_accel;
 
     // gimbal control
-    float delta_angle = angle_from_vec2(target_dir_x, target_dir_y) - angle; // normalizing angle
+    float target_angle = angle_from_vec2(-vel_x, 10.0f * fabsf(vel_y));
+    float delta_angle = target_angle - angle; // normalizing angle
     if (delta_angle > 3.14159265f) delta_angle -= 6.2831853f;
     else if (delta_angle < -3.14159265f) delta_angle += 6.2831853f;
 
@@ -163,7 +175,12 @@ void DSKY_Keyboard(void) {
                 break;
             
             case 2:
-                VERB = dsky_VERB;
+                if (dsky_VERB == 18) {
+                    Serial_SendByte(0x40);
+                    dsky_VERB = VERB;
+                } else {
+                    VERB = dsky_VERB;
+                }
                 break;
             
             case 3:
@@ -283,6 +300,9 @@ int main(void) {
         if (situation & 0b0001) PROG = 68; // CONTACT
 
         switch (PROG) {
+            case 63:
+                P63();
+                break;
             case 64:
                 P64();
                 break;
@@ -329,12 +349,22 @@ int main(void) {
                     case 1: // Tgo
                         REG1 = t_go;
                         break;
-                    
                     case 2: // Fuel Level
                         Serial_SendByte(0x0a);
                         REG1 = Serial_ReadFloat();
                         break;
-
+                    case 3: // Throttle (%)
+                        REG1 = throttle * 100.0f;
+                        break;
+                    case 4: // Vel x
+                        REG1 = fabsf(vel_x);
+                        break;
+                    case 5: // Vel Mag
+                        REG1 = sqrtf(vel_x*vel_x + vel_y*vel_y);
+                        break;
+                    case 6: // Downrange
+                        REG1 = fabsf(pos_x);
+                        break;
                     default:
                         break;
                 }
@@ -354,8 +384,9 @@ int main(void) {
         led_state |= 0b1111;
 
         // UPDATE LED STATE
-        if (dsky_key_pressed) led_state &= 0b1110;  // key     led on
-        if (dsky_state != 0) led_state &= 0b1101;   // edit    led on
+        if (dsky_key_pressed)  led_state &= 0b1110; // key     led on
+        if (dsky_state != 0)   led_state &= 0b1101; // edit    led on
+        if (situation &= 0x08) led_state &= 0b1011; // uplink  led on
         if (situation &= 0x01) led_state &= 0b0111; // contact led on
         
         LED_WriteData(led_state);

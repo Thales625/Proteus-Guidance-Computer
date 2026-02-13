@@ -31,11 +31,11 @@ scale = 0.01
 
 # tank
 lunar_module = Vessel(
-    # position=np.array([0.0, 30.0]),
-    # velocity=np.array([5., 0.]),
+    position=np.array([0.0, 400.0]),
+    velocity=np.array([5., -5.]),
 
-    position=np.array([0.0, 5000.0]),
-    velocity=np.array([100., -50.]),
+    # position=np.array([0.0, 5000.0]),
+    # velocity=np.array([100., -50.]),
 
     dry_mass=4_200.,
     fuel_mass=10_500.,
@@ -353,24 +353,14 @@ lunar_module.add_part(Part(
 
 universe.vessels.append(lunar_module)
 
-### TARGET DESIGNATION
-
-time_to_ground = (-lunar_module.velocity[1] - np.sqrt(lunar_module.velocity[1]**2 - 2*celestial_body.gravity[1]*lunar_module.position[1])) / celestial_body.gravity[1]
-search_spot_x = lunar_module.position[0] + lunar_module.velocity[0]*time_to_ground
-search_radius = 50
-# search_radius = max(100, abs(lunar_module.position[1]))
-
-lunar_module.target_position = celestial_body.get_flat_spot(search_spot_x-search_radius, search_spot_x+search_radius)
-
 ### UI
 
 text_ut = None
 text_fuel = None
-
-print("AV ACC ANG:", (180/3.1415)*(lunar_module.available_torque/lunar_module.moment_of_inertia))
+annotate_landing_site = None
 
 def setup_func(ax):
-    global text_ut, text_fuel
+    global text_ut, text_fuel, annotate_landing_site
 
     text_ut = ax.text(
         0.01, 0.99, "", transform=ax.transAxes,
@@ -382,11 +372,9 @@ def setup_func(ax):
         ha="left", va="top", fontweight="bold"
     )
 
-    # ax.scatter(*lunar_module.target_position, marker="x", color="red", label="Planned landing site")
-
-    ax.annotate(
+    annotate_landing_site = ax.annotate(
         "Planned landing site",
-        xy=lunar_module.target_position,
+        xy=np.array([0., 0.]),
         xytext=(10, -50),
         ha="center",
         textcoords="offset points",
@@ -397,6 +385,12 @@ def setup_func(ax):
         ),
         color="red"
     )
+
+    lunar_module.update_annotate_landing_site = lambda xy: setattr(annotate_landing_site, "xy", xy)
+    
+    ### TARGET DESIGNATION
+    lunar_module.update_landing_target()
+
 
 def loop_func(ut):
     global text_ut

@@ -126,6 +126,22 @@ class Vessel:
                         "ground_height": ground_height
                     }
 
+    def update_landing_target(self):        
+        pos = self.position
+        vel = self.velocity
+        
+        time_to_ground = (-vel[1] - np.sqrt(vel[1]**2 - 2*self.body.gravity[1]*pos[1])) / self.body.gravity[1]
+        search_spot_x = pos[0] + vel[0]*time_to_ground
+        search_radius = 50
+        # search_radius = max(100, abs(pos[1]))
+
+        print("UPDATE LANDING SPOT")
+
+        self.target_position = self.body.get_flat_spot(search_spot_x-search_radius, search_spot_x+search_radius)
+
+        if hasattr(self, "update_annotate_landing_site"):
+            self.update_annotate_landing_site(self.target_position)
+
     @property
     def position(self):
         with self.state_lock:

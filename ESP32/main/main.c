@@ -1,8 +1,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 #include "driver/uart.h"
 #include "driver/gpio.h"
+
 #include "esp_adc/adc_oneshot.h"
+
+#include <math.h>
 
 #define TIMEOUT_LOOP (20 / portTICK_PERIOD_MS)
 
@@ -58,6 +62,12 @@ static float read_axis(adc_channel_t channel) {
     return raw / 4095.0f;
 }
 
+static float clamp(float value, float min, float max) {
+    if (value > max) return max;
+    if (value < min) return min;
+    return value;
+}
+
 void app_main(void) {
     init_usb_uart();
     init_adc();
@@ -78,13 +88,13 @@ void app_main(void) {
         if (len > 0) {
             if (recv_data == 0) {
                 // uart send value_x
-                // value_x = read_axis(ADC_CH_X)-center_x;
-                value_x = read_axis(ADC_CH_X);
+                value_x = clamp((read_axis(ADC_CH_X)-center_x)*2.0f, -1.0f, 1.0f);
+                if (fabsf(value_x) < 0.01f) value_x = 0.0f;
                 uart_write_bytes(PORT_USB, (const void*)&value_x, sizeof(float));
             } else if (recv_data == 1) {
                 // uart send value_y
-                // value_y = read_axis(ADC_CH_Y)-center_y;
-                value_y = read_axis(ADC_CH_Y);
+                value_y = clamp((read_axis(ADC_CH_Y)-center_y)*2.0f, -1.0f, 1.0f);
+                if (fabsf(value_y) < 0.01f) value_y = 0.0f;
                 uart_write_bytes(PORT_USB, (const void*)&value_y, sizeof(float));
             }
             

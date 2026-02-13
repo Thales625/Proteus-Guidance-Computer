@@ -1,3 +1,3 @@
 idf_component_register(SRCS "main.c"
                     INCLUDE_DIRS "."
-                    REQUIRES esp_timer driver log i2cdev esp_adc)
+                    REQUIRES esp_timer driver esp_adc)

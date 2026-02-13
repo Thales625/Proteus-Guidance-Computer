@@ -20,7 +20,7 @@ float gravity_y;
 // CONTROL
 byte_t PROG, VERB, NOUN;
 float throttle, gimbal;
-float t_go, t_go0;
+float t_go, dt;
 
 // DKSY
 bool dsky_key_pressed = false;
@@ -30,13 +30,8 @@ float REG1, REG2, REG3;
 
 byte_t led_state = 0b1111;
 
-void compute_tgo(void) {
-    // t_go0 = fabsf(4*pos_y/vel_y); // DEBUG
-    t_go0 = 10.0f + fabsf((3.0f*vel_y + sqrtf(9.0f*vel_y*vel_y - 12.0f*gravity_y*pos_y)) / gravity_y); // DEBUG
-}
-
 void P64(void) {
-    t_go = t_go0 - ut;
+    t_go -= dt;
 
     if (t_go < 3.0f) t_go = 3.0f;
 
@@ -51,21 +46,15 @@ void P64(void) {
     throttle = sqrtf(a0_x * a0_x + a0_y * a0_y) / av_accel;
 
     // gimbal control
-    if (throttle != 0) {
-        // normalizing angle
-        float delta_angle = angle_from_vec2(a0_x, a0_y) - angle;
+    float delta_angle = angle_from_vec2(a0_x, a0_y) - angle; // normalizing angle
+    if (delta_angle > 3.14159265f) delta_angle -= 6.2831853f;
+    else if (delta_angle < -3.14159265f) delta_angle += 6.2831853f;
 
-        if (delta_angle > 3.14159265f) {
-            delta_angle -= 6.2831853f;
-        } else if (delta_angle < -3.14159265f) {
-            delta_angle += 6.2831853f;
-        }
+    gimbal = (ang_vel - 0.5f*sqrtf(fabsf(delta_angle) * av_accel_ang) * signf(delta_angle)) / av_accel_ang;
 
-        // gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / (av_accel_ang * throttle); // considering without RCS
-
-        // gimbal = (ang_vel - sqrtf(0.8f * fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / av_accel_ang;
-        gimbal = (ang_vel - 0.5f*sqrtf(fabsf(delta_angle) * av_accel_ang * throttle) * signf(delta_angle)) / av_accel_ang;
-    }
+    // DEBUG delta angle
+    // Serial_SendByte(0xFD);
+    // Serial_SendFloat(delta_angle);
 }
 
 void P65(void) {
@@ -76,32 +65,24 @@ void P65(void) {
     throttle = (-1.0f - vel_y - gravity_y) / av_accel;
 
     // gimbal control
-    if (throttle != 0) {
-        // normalizing angle
-        float delta_angle = angle_from_vec2(target_dir_x, target_dir_y) - angle;
+    float delta_angle = angle_from_vec2(target_dir_x, target_dir_y) - angle; // normalizing angle
+    if (delta_angle > 3.14159265f) delta_angle -= 6.2831853f;
+    else if (delta_angle < -3.14159265f) delta_angle += 6.2831853f;
 
-        if (delta_angle > 3.14159265f) {
-            delta_angle -= 6.2831853f;
-        } else if (delta_angle < -3.14159265f) {
-            delta_angle += 6.2831853f;
-        }
-
-        gimbal = (ang_vel - sqrtf(fabsf(delta_angle) * av_accel_ang) * signf(delta_angle)) / av_accel_ang;
-    }
+    gimbal = (ang_vel - sqrtf(fabsf(delta_angle) * av_accel_ang) * signf(delta_angle)) / av_accel_ang;
 }
 
 void P66(void) {
     // read joystick  
     Serial_SendByte(0x30);
     float target_ang_vel = Serial_ReadFloat();
-    float target_vy = Serial_ReadFloat();
+    float target_vy = Serial_ReadFloat()*3.0f - 1.0f;
 
     // throttle control
-    throttle = (target_vy-vel_y) / av_accel;
+    throttle = 5.0f*(target_vy-vel_y) / av_accel;
 
     // gimbal control
-    // gimbal = -(ang_vel-target_ang_vel) / av_accel_ang;
-    gimbal = target_ang_vel;
+    gimbal = (target_ang_vel+ang_vel) / av_accel_ang;
 }
 
 void P67(void) {
@@ -114,6 +95,18 @@ void P67(void) {
 void P68(void) {
     throttle = 0.0f;
     gimbal = 0.0f;
+}
+
+void P70(void) {
+    // throttle control
+    throttle = -(vel_y + gravity_y) / av_accel;
+
+    // gimbal control - point up
+    float delta_angle = 3.14159265f - angle; // normalizing angle
+    if (delta_angle > 3.14159265f) delta_angle -= 6.2831853f;
+    else if (delta_angle < -3.14159265f) delta_angle += 6.2831853f;
+
+    gimbal = (ang_vel - sqrtf(fabsf(delta_angle) * av_accel_ang) * signf(delta_angle)) / av_accel_ang;
 }
 
 void DSKY_Keyboard(void) {
@@ -163,7 +156,10 @@ void DSKY_Keyboard(void) {
             
             case 1:
                 PROG = dsky_PROG;
-                compute_tgo();
+                if (PROG == 64) { // REQUEST TGO
+                    Serial_SendByte(0x0C);
+                    t_go = Serial_ReadFloat();
+                }
                 break;
             
             case 2:
@@ -240,9 +236,13 @@ inline void read_environment(void) {
 
 int main(void) {
     byte_t counter = 0;
+    float prev_ut = 0.0f;
 
-    t_go0 = 50.0f;
+    t_go = 50.0f;
+
     PROG = 63;
+    VERB = 16;
+    NOUN = 1;
 
     { // CONFIG SERIAL
         Serial_ConfigTimer(0xFD); // 9.600 bps | 11.0592 MHz
@@ -277,6 +277,9 @@ int main(void) {
     while (1) {
         read_environment();
 
+        dt = ut - prev_ut;
+        prev_ut = ut;
+
         if (situation & 0b0001) PROG = 68; // CONTACT
 
         switch (PROG) {
@@ -294,6 +297,9 @@ int main(void) {
                 break;
             case 68:
                 P68();
+                break;
+            case 70:
+                P70();
                 break;
             default:
                 break;

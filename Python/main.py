@@ -24,18 +24,18 @@ universe = Universe(celestial_body)
 
 MAX_SAFE_IMPACT_ENERGY_CAPSULE = 2e3
 MAX_SAFE_IMPACT_ENERGY_TANK = 5e3
-MAX_SAFE_IMPACT_ENERGY_GEARS = 10e3
+MAX_SAFE_IMPACT_ENERGY_GEARS = 15e3
 MAX_SAFE_IMPACT_ENERGY_STRUCTURE = 1e3
 
 scale = 0.01
 
 # tank
 lunar_module = Vessel(
-    position=np.array([0.0, 400.0]),
-    velocity=np.array([5., -5.]),
+    # position=np.array([0.0, 400.0]),
+    # velocity=np.array([5., -5.]),
 
-    # position=np.array([0.0, 5000.0]),
-    # velocity=np.array([100., -50.]),
+    position=np.array([0.0, 5000.0]),
+    velocity=np.array([100., -50.]),
 
     dry_mass=4_200.,
     fuel_mass=10_500.,

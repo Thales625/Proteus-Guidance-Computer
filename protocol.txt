@@ -62,6 +62,7 @@ VERBs:
             data:
                 value_x (float32)
                 value_y (float32)
+        1: Send buzzer interval (byte)
 
     4 -> Event
         NOUNs:

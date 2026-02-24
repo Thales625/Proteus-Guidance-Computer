@@ -85,10 +85,10 @@ void P65(void) {
 }
 
 void P66(void) {
-    // read joystick  
+    // read joystick
     Serial_SendByte(0x30);
-    float target_ang_vel = Serial_ReadFloat();
     float target_vy = Serial_ReadFloat()*3.0f - 1.0f;
+    float target_ang_vel = Serial_ReadFloat();
 
     // throttle control
     throttle = 5.0f*(target_vy-vel_y) / av_accel;
@@ -330,10 +330,16 @@ int main(void) {
         Serial_SendFloat(throttle); // throttle
         Serial_SendFloat(gimbal); // gimbal
 
-        // UPDATE DSKY
+        // UPDATE DSKY & JOYSTICK BUZZER
         counter++;
         if (counter == 5) {
             counter = 0;
+
+            // update buzzer interval
+            {
+                Serial_SendByte(0x31);
+                Serial_SendByte((byte_t) (pos_y / 20.0f));
+            }
 
             if (dsky_state == 0) { // standby
                 dsky_PROG = PROG;

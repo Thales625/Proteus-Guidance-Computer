@@ -10,33 +10,35 @@ class Joystick:
             print("Joystick ERR:", err)
             self.enabled = False
 
-    def serial_write(self, value):
+    def serial_write_to_esp(self, value):
         if isinstance(value, float):
             self.serial_port.write(struct.pack('<f', value))
         elif isinstance(value, int):
             self.serial_port.write(bytes([value]))
 
-    def request(self, noun:int):
+    def request_package(self):
         data = []
         
-        if noun == 0:
-            self.serial_write(0)
-            raw_bytes = self.serial_port.read(4)
-            if len(raw_bytes) == 4: data.append(struct.unpack('<f', raw_bytes)[0])
-            else:
-                data = [float(0.)]
-                print("Joystick: Timeouted!")
-
-            self.serial_write(1)
-            raw_bytes = self.serial_port.read(4)
-            if len(raw_bytes) == 4: data.append(struct.unpack('<f', raw_bytes)[0])
-            else:
-                data = [float(0.)]
-                print("Joystick: Timeouted!")
+        self.serial_write_to_esp(0)
+        raw_bytes = self.serial_port.read(4)
+        if len(raw_bytes) == 4: data.append(struct.unpack('<f', raw_bytes)[0])
         else:
             data = [float(0.)]
-            print("Joystick: Invalid noun!")
-        
+            self.enabled = False
+            print("Joystick: Timeouted!")
+
+        self.serial_write_to_esp(1)
+        raw_bytes = self.serial_port.read(4)
+        if len(raw_bytes) == 4: data.append(struct.unpack('<f', raw_bytes)[0])
+        else:
+            data = [float(0.)]
+            self.enabled = False
+            print("Joystick: Timeouted!")
+
         print(data)
 
         return data
+    
+    def send_interval(self, interval):
+        self.serial_write_to_esp(3)
+        self.serial_write_to_esp(interval)

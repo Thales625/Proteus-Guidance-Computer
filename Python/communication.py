@@ -111,13 +111,24 @@ class Communication:
                         print(f"ERROR: MCU write invalid noun({noun})")
                         continue
 
-                    if verb == 3: # MCU request JOYSTICK
-                        if self.joystick.enabled:
-                            for joystick_data in self.joystick.request(noun):
-                                self.serial_write(joystick_data)
-                            continue
-                        print(f"ERROR: Joystick is unavailable!")
-                        self.serial_write(float(0.0))
+                    if verb == 3: # MCU communicate to JOYSTICK
+                        if not self.joystick.enabled:
+                            print(f"ERROR: Joystick is unavailable!")
+
+                        if noun == 0: # request package
+                            if self.joystick.enabled:
+                                for joystick_data in self.joystick.request_package():
+                                    self.serial_write(joystick_data)
+                            else:
+                                self.serial_write(0.0)
+                                self.serial_write(0.0)
+                        elif noun == 1: # send buzzer interval
+                            if self.joystick.enabled:
+                                interval = self.serial_port.read(1)
+                                if len(interval) == 0:
+                                    print("ERROR: MCU write invalid interval")
+                                    continue
+                                self.joystick.send_interval(interval[0])
                         continue
 
                     if verb == 4: # MCU trigger event

@@ -5,6 +5,7 @@ MCU/output/
 ESP32/.vscode/
 ESP32/build/
 ESP32/sdkconfig.old
+ESP32/.cache
 
 # Proteus
 Proteus/*.PWI

@@ -352,15 +352,21 @@ lunar_module.add_part(Part(
 ))
 
 universe.vessels.append(lunar_module)
+    
+### TARGET DESIGNATION
+
+lunar_module.update_landing_target()
 
 ### UI
 
 text_ut = None
 text_fuel = None
+text_joystick = None
+text_joystick_status = None
 annotate_landing_site = None
 
 def setup_func(ax):
-    global text_ut, text_fuel, annotate_landing_site
+    global text_ut, text_fuel, text_joystick, text_joystick_status, annotate_landing_site
 
     text_ut = ax.text(
         0.01, 0.99, "", transform=ax.transAxes,
@@ -369,6 +375,15 @@ def setup_func(ax):
 
     text_fuel = ax.text(
         0.01, 0.95, "", transform=ax.transAxes,
+        ha="left", va="top", fontweight="bold"
+    )
+
+    text_joystick = ax.text(
+        0.01, 0.91, "joystick = ", transform=ax.transAxes,
+        ha="left", va="top", fontweight="bold"
+    )
+    text_joystick_status = ax.text(
+        0.20, 0.91, "", transform=ax.transAxes,
         ha="left", va="top", fontweight="bold"
     )
 
@@ -387,20 +402,21 @@ def setup_func(ax):
     )
 
     lunar_module.update_annotate_landing_site = lambda xy: setattr(annotate_landing_site, "xy", xy)
-    
-    ### TARGET DESIGNATION
-    lunar_module.update_landing_target()
+
+    return [text_fuel, text_joystick, text_joystick_status]
 
 
 def loop_func(ut):
-    global text_ut
+    global text_ut, text_fuel, text_joystick, text_joystick_status
 
     text_ut.set_text(f"ut = {ut:.2f} s")
-    text_fuel.set_text(f"fuel = [{text_bar(lunar_module.fuel_mass, lunar_module.fuel_capacity)}] | {lunar_module.fuel_mass:.2f} kg")
+
+    if universe.debug_mode:
+        text_fuel.set_text(f"fuel = [{text_bar(lunar_module.fuel_mass, lunar_module.fuel_capacity)}] | {lunar_module.fuel_mass:.2f} kg")
+        text_joystick_status.set_text("enabled" if lunar_module.communication.joystick.enabled else "disabled")
+        text_joystick_status.set_color("green" if lunar_module.communication.joystick.enabled else "red")
 
     # lunar_module.control.gimbal = 1.0
     # lunar_module.control.throttle = 1.0
-
-    return [text_ut, text_fuel]
 
 universe.Simulate(setup_func, loop_func, dt=0.05)

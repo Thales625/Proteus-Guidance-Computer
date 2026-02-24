@@ -15,6 +15,8 @@ class Universe:
         self.cam_position = np.array([0., 0.])
         self.cam_follow_rocket = True
 
+        self.debug_mode = False
+
         self.celestial_body = celestial_body
 
     def PhysicsLoop(self, dt, ut):
@@ -84,7 +86,9 @@ class Universe:
         self.SetupShapes(ax)
         artists = self.GetArtists()
 
-        setup_func(ax)
+        debug_texts = setup_func(ax)
+        for text in debug_texts:
+            text.set_visible(self.debug_mode)
 
         self.terrain_line, = ax.plot([], [], color="gray", linewidth=2, label="Surface")
 
@@ -104,7 +108,9 @@ class Universe:
             self.RenderLoop()
             self.UpdateTerrain(ax)
 
-            return artists + loop_func(ut) + [self.terrain_line]
+            loop_func(ut)
+
+            return artists + [self.terrain_line]
 
         def on_key(event):
             if event.key == "+":
@@ -114,6 +120,12 @@ class Universe:
 
             elif event.key == "c":
                 self.cam_follow_rocket = not self.cam_follow_rocket
+
+            elif event.key == "d":
+                self.debug_mode = not self.debug_mode
+
+                for text in debug_texts:
+                    text.set_visible(self.debug_mode)
 
             self.cam_zoom = np.clip(self.cam_zoom, self.cam_min_zoom, self.cam_max_zoom)
 

@@ -97,7 +97,7 @@ class Universe:
 
             # camera follows rocket
             if self.cam_follow_rocket:
-                self.cam_position = 0.5 * self.cam_position + 0.5 * self.vessels[0].position
+                self.cam_position = 0.1 * self.cam_position + 0.9 * self.vessels[0].position
                 
                 x, y = self.cam_position
 

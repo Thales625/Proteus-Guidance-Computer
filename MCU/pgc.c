@@ -175,11 +175,22 @@ void DSKY_Keyboard(void) {
                 break;
             
             case 2:
-                if (dsky_VERB == 18) {
-                    Serial_SendByte(0x40);
-                    dsky_VERB = VERB;
-                } else {
-                    VERB = dsky_VERB;
+                // events
+                switch (dsky_VERB) {
+                    case 18: // redesignate landing site
+                        Serial_SendByte(0x40);
+                        dsky_VERB = VERB;
+                        break;
+                    
+                    case 19: // compute Tgo
+                        Serial_SendByte(0x0C);
+                        t_go = Serial_ReadFloat();
+                        dsky_VERB = VERB;
+                        break;
+
+                    default: // not an event
+                        VERB = dsky_VERB;
+                        break;
                 }
                 break;
             
